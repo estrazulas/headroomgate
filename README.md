@@ -39,6 +39,48 @@
 
 Headroom compresses everything your AI agent reads — tool outputs, logs, RAG chunks, files, and conversation history — before it reaches the LLM. Same answers, fraction of the tokens.
 
+---
+
+## 🔐 Sanitized Fork — Build from Source
+
+This fork lets you **compile from audited source** instead of running opaque PyPI binaries.
+
+### Install (one command)
+
+```bash
+pipx install --force \
+  "https://github.com/estrazulas/headroom_sanitizer/releases/download/v0.25.0/headroom_ai-0.25.0-cp310-abi3-manylinux_2_35_x86_64.whl[proxy,code,mcp]"
+```
+
+### Repeat for a new upstream release
+
+```bash
+# 1. Sync with upstream
+git fetch upstream --tags
+git merge upstream/main
+
+# 2. Build wheel (requires Rust + Maturin)
+source "$HOME/.cargo/env"
+rm -rf dist/
+maturin build --release --out dist/
+
+# 3. Publish GitHub Release
+VER=$(grep 'version = ' pyproject.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+gh release create "v${VER}" dist/*.whl \
+  --title "v${VER} — Build sanitizado" \
+  --notes "Build from commit $(git rev-parse HEAD)."
+
+# 4. Install locally
+pipx install --force "dist/*.whl[proxy,code,mcp]"
+systemctl --user restart headroom.service
+```
+
+Or use the bundled script: `./rebuild.sh`
+
+Full guide: [`BUILD.md`](BUILD.md)
+
+---
+
 <p align="center">
   <img src="HeadroomDemo-Fast.gif" alt="Headroom in action" width="820">
   <br/><sub>Live: 10,144 → 1,260 tokens — same FATAL found.</sub>
