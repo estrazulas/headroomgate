@@ -115,7 +115,7 @@ class Memory:
         qdrant_api_key: str | None = None,
         neo4j_uri: str = "neo4j://localhost:7687",
         neo4j_user: str = "neo4j",
-        neo4j_password: str = "password",
+        neo4j_password: str = "",
     ) -> None:
         from headroom.memory import qdrant_env
 

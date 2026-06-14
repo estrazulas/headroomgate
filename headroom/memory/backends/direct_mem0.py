@@ -99,7 +99,7 @@ class Mem0Config:
     # Neo4j settings
     neo4j_uri: str = "neo4j://localhost:7687"
     neo4j_user: str = "neo4j"
-    neo4j_password: str = "password"
+    neo4j_password: str = ""
 
     # Qdrant settings (defaults resolve from HEADROOM_QDRANT_* env vars)
     qdrant_url: str | None = field(default_factory=qdrant_env.qdrant_env_url)
