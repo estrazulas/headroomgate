@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "headroom-auth"
+version = "0.1.0"
+description = "Multi-user authentication middleware for the Headroom proxy"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Headroom Contributors" }]
+keywords = ["headroom", "auth", "api-key", "proxy", "llm-gateway"]
+dependencies = [
+    "cryptography",
+    "neo4j>=5.0",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: Proxy Servers",
+    "Topic :: Security",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff"]
+test = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://github.com/chopratejas/headroom"
+Repository = "https://github.com/chopratejas/headroom"
+Issues = "https://github.com/chopratejas/headroom/issues"
+
+# Registers with Headroom's opt-in proxy-extension seam (headroom/proxy/extensions.py).
+# Enable at runtime with `--proxy-extension headroom-auth` or HEADROOM_PROXY_EXTENSIONS=headroom-auth.
+[project.entry-points."headroom.proxy_extension"]
+headroom-auth = "headroom_auth:install"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100

@@ -426,6 +426,45 @@ class Neo4jAuthStore:
             "status": "active" if r["status"] else "deactivated",
         }
 
+    def resolve_key_identity(self, api_key: str) -> dict[str, Any] | None:
+        """Resolve a proxy API key to the full identity needed by the auth middleware.
+
+        Returns a dict with ``user_id``, ``username``, ``role``, ``team``,
+        ``is_active``, ``provider_keys`` (raw JSON string), ``default_rpm``,
+        ``default_tpm``, and ``key_expires_at`` — or ``None`` when the key
+        is invalid, expired, revoked, or the user is deactivated.
+        """
+        key_hash = self._hash_key(api_key)
+        records = self._run(
+            """
+            MATCH (k:ApiKey {key_hash: $key_hash, is_active: true})
+            WHERE k.expires_at IS NULL OR k.expires_at > datetime()
+            MATCH (k)-[:OWNS_KEY]->(u:User {is_active: true})
+            MATCH (r:Role {name: u.role})
+            RETURN u.user_id AS user_id, u.username AS username,
+                   u.role AS role, u.team AS team,
+                   r.provider_keys AS provider_keys,
+                   r.default_rpm AS default_rpm,
+                   r.default_tpm AS default_tpm,
+                   k.expires_at AS key_expires_at
+            """,
+            {"key_hash": key_hash},
+        )
+        if not records:
+            return None
+        r = records[0]
+        return {
+            "user_id": r["user_id"],
+            "username": r["username"],
+            "role": r["role"],
+            "team": r["team"],
+            "is_active": True,
+            "provider_keys": r.get("provider_keys") or "{}",
+            "default_rpm": r.get("default_rpm"),
+            "default_tpm": r.get("default_tpm"),
+            "key_expires_at": r.get("key_expires_at"),
+        }
+
     # ------------------------------------------------------------------
     # provider key storage
     # ------------------------------------------------------------------
