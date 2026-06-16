@@ -34,4 +34,9 @@ try:
 except ImportError:
     pass
 
+try:
+    from . import auth  # noqa: F401
+except ImportError:
+    pass
+
 __all__ = ["main"]

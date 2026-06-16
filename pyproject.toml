@@ -129,6 +129,11 @@ memory-stack = [
     "qdrant-client>=1.9.0,<2.0",
     "neo4j>=5.20.0,<7.0",
 ]
+# Multi-user auth (CLI admin commands + auth middleware plugin)
+auth = [
+    "cryptography>=41.0.0",
+    "neo4j>=5.20.0,<7.0",
+]
 # Apple-Silicon GPU (MPS) offload for the memory embedder. Opt in at runtime with
 # HEADROOM_EMBEDDER_RUNTIME=pytorch_mps. macOS-only; intentionally excluded from [all].
 pytorch-mps = [

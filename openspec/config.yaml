@@ -1,0 +1,32 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Python >=3.10, Click (CLI), Neo4j 5.26 (Cypher via GraphDatabase.driver),
+              Fernet (cryptography library), FastAPI (proxy)
+  Conventions: ruff (double-quotes, line-length=100), mypy (disallow_untyped_defs=true)
+  Language: all code, CLI output, error messages, docstrings, comments, and documentation
+    MUST be in English — this is an international open-source repository
+  Existing patterns to follow:
+    - Neo4j access: headroom/memory/backends/direct_mem0.py (DirectMem0Adapter)
+    - Proxy extensions: headroom/proxy/extensions.py + plugins/headroom-oauth2/
+    - Per-request identity: headroom/proxy/project_context.py (contextvars)
+    - CLI subcommands: headroom/cli/ (Click groups registered in main.py::_register_commands)
+  Domain: multi-user auth and access control for LLM proxy
+
+rules:
+  proposal:
+    - proposals must include Non-goals section
+  design:
+    - each decision must list alternatives considered with rationale for rejection
+  tasks:
+    - tasks must reference specific files and spec requirements
+  specs:
+    - use BDD scenarios (WHEN/THEN/AND format)
+  development:
+    - all output must be in English — CLI messages, error strings, docstrings, comments,
+      log messages, and documentation. never generate Portuguese text in code or docs
+    - code must be compatible with the current source code in the repository — always verify
+      existing APIs, function signatures, and module layouts before writing against them
+    - for library documentation (Click, FastAPI, Neo4j driver, cryptography/Fernet,
+      fastembed, httpx, etc.), consult the Context7 MCP server (resolve-library-id then
+      query-docs) instead of relying on training data — APIs may have changed

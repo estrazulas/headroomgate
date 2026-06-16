@@ -67,6 +67,12 @@ def _register_commands() -> None:
         wrap,  # noqa: F401
     )
 
+    # Auth requires cryptography + neo4j — optional
+    try:
+        from . import auth  # noqa: F401
+    except ImportError:
+        pass
+
     # Memory CLI requires numpy/hnswlib — optional
     try:
         from . import memory  # noqa: F401
