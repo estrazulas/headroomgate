@@ -127,6 +127,7 @@ credentials.json
 api_keys.txt
 .anthropic
 .openai
+.mcp.json
 
 # IDE and editors
 .idea/
