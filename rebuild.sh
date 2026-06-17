@@ -23,7 +23,8 @@ gh release create "v${VERSAO}" dist/*.whl \
   --notes "Build compilado localmente a partir do commit $(git rev-parse HEAD)."
 
 echo "=== Instalando localmente ==="
-pipx install --force "dist/*.whl[proxy,code,mcp,auth]"
+WHEEL=$(ls dist/*.whl | head -1)
+pipx install --force "${WHEEL}[proxy,code,mcp,auth]"
 systemctl --user restart headroom.service 2>/dev/null || true
 
 echo "=== Pronto! headroom ${VERSAO} instalado e release publicado ==="
