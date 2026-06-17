@@ -201,7 +201,7 @@ echo "  1. Start the proxy with auth:"
 echo "     $(bold "headroom proxy --port 8787 --proxy-extension headroom-auth")"
 echo
 echo "  2. Connect Claude Code:"
-echo "     $(bold "./scripts/headroom-claude \"Hello\"")"
+echo "     $(bold "./scripts/headroom-connect \"Hello\"")"
 echo
 echo "  3. Onboard a developer:"
 echo "     $(bold "headroom auth create-user bob --role developer --team backend")"

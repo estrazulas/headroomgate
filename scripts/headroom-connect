@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# headroom-claude — Connect Claude Code through a Headroom proxy
+# headroom-connect — Connect Claude Code through a Headroom proxy
 #
 # Sources your Headroom API key from ~/.config/headroom/env
 # and routes all Claude Code traffic through the proxy.
@@ -11,13 +11,13 @@
 # Provider keys live on the server, never on your machine.
 #
 # Usage:
-#   headroom-claude [--proxy-url URL] [-- claude-args...]
-#   headroom-claude --help
+#   headroom-connect [--proxy-url URL] [-- claude-args...]
+#   headroom-connect --help
 #
 # Examples:
-#   headroom-claude "Explain Python decorators"
-#   headroom-claude --proxy-url http://proxy.empresa.com:8787
-#   headroom-claude -- --model claude-sonnet-4-6
+#   headroom-connect "Explain Python decorators"
+#   headroom-connect --proxy-url http://proxy.empresa.com:8787
+#   headroom-connect -- --model claude-sonnet-4-6
 #
 # Works with: Claude Code, or any Anthropic-compatible client.
 # For OpenAI-compatible clients, set OPENAI_BASE_URL instead.
@@ -32,10 +32,10 @@ PROXY_URL=""
 # ---- usage ---------------------------------------------------------------
 usage() {
     cat <<'EOF'
-headroom-claude — Connect Claude Code through a Headroom proxy.
+headroom-connect — Connect Claude Code through a Headroom proxy.
 
 Usage:
-  headroom-claude [--proxy-url URL] [-- claude-args...]
+  headroom-connect [--proxy-url URL] [-- claude-args...]
 
 Options:
   --proxy-url URL  Headroom proxy base URL (default: http://localhost:8787,
