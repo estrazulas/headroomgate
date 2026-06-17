@@ -27,7 +27,20 @@
 
 Headroom compresses everything your AI agent reads — tool outputs, logs, RAG chunks, files, and conversation history — before it reaches the LLM. Same answers, fraction of the tokens.
 
-> **This is a sanitized fork** of [chopratejas/headroom](https://github.com/chopratejas/headroom). All compression features are preserved from upstream. For the original project's full documentation, benchmarks, pipeline internals, and integrations, see the [upstream repo](https://github.com/chopratejas/headroom).
+## 🚀 Why this fork
+
+Same upstream compression engine, **plus a complete team gateway** built in:
+
+| You want to… | You get |
+|-------------|---------|
+| **Manage who uses the proxy** | Create users, teams, and API keys — revoke access anytime |
+| **Stop sharing provider keys** | Devs authenticate with their own key; provider keys stay encrypted on the server |
+| **Know who spent what** | Structured audit trail: every request logged with user, model, tokens, latency |
+| **Find what people asked** | Semantic search — "show me debugging sessions about memory leaks" |
+| **Investigate outliers** | Per-user request history with `--history` — see exactly what they worked on |
+| **Onboard in 2 minutes** | Interactive setup wizard + one-command wrapper for Claude Code |
+
+> Built on [chopratejas/headroom](https://github.com/chopratejas/headroom). All upstream compression features preserved.
 
 ---
 
