@@ -48,27 +48,27 @@ Same upstream compression engine, **plus a complete team gateway** built in:
 
 This fork adds **multi-user auth and access control** on top of the compression proxy, turning Headroom into a managed LLM gateway for teams.
 
-### Admin CLI & user management → [DUMMY](openspec/changes/archive/2026-06-16-admin-cli-user-management/DUMMY.MD)
+### Admin CLI & user management → [see how](openspec/changes/archive/2026-06-16-admin-cli-user-management/DUMMY.MD)
 
 - **User registration** — `headroom auth create-user` creates users with encrypted API keys (Fernet)
 - **Team organization** — users belong to teams; the admin sets roles and rate limits
 - **Key rotation** — `headroom auth create-key <user>` generates a new API key, revoking the old one
 
-### Auth proxy gateway → [DUMMY](openspec/changes/archive/2026-06-16-auth-proxy-gateway/DUMMY.MD)
+### Auth proxy gateway → [see how](openspec/changes/archive/2026-06-16-auth-proxy-gateway/DUMMY.MD)
 
 - **Middleware plugin** — every proxy request is authenticated before reaching the LLM
 - **API key validation** — reads the `Authorization: Bearer <key>` header, looks up the user in Neo4j
 - **Rate limiting** — per-user and per-team token budgets enforced by a token-bucket algorithm
 - **Identity propagation** — the authenticated user identity travels through `contextvars`, available to every downstream component without passing it explicitly
 
-### Usage audit & analytics → [DUMMY](openspec/changes/archive/2026-06-16-audit-analytics/DUMMY.MD)
+### Usage audit & analytics → [see how](openspec/changes/archive/2026-06-16-audit-analytics/DUMMY.MD)
 
 - **Structured logging (Neo4j)** — every request is recorded: who made it, which model, how many tokens, latency, cache hit/miss
 - **Semantic search (Qdrant)** — request prompts are embedded as vectors so you can search by meaning: *"show me everything about database migrations"*
 - **Async buffer** — writes are batched in memory (50 entries or 5 seconds, whichever comes first), so audit logging adds **zero latency** to the client response
 - **CLI analytics** — `headroom usage summary`, `headroom usage top --by-tokens`, `headroom usage search "architecture patterns"`
 
-### Request history → [DUMMY](openspec/changes/archive/2026-06-17-usage-history/DUMMY.MD)
+### Request history → [see how](openspec/changes/archive/2026-06-17-usage-history/DUMMY.MD)
 
 - **Chronological listing** — `headroom usage user alice --history --last 7d` shows individual requests with timestamp, model, tokens, and summary
 - **No guessing required** — see exactly what a user worked on without crafting semantic search queries
