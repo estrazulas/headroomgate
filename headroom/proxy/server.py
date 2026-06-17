@@ -1458,6 +1458,17 @@ class HeadroomProxy(
 
         await emit_request_outcome(self, outcome)
 
+        # Audit logging (PRD 3): best-effort, never blocks the response.
+        # Identity is read from contextvars — if auth is disabled, user_id
+        # is None and the call is a silent no-op.
+        try:
+            from headroom.audit.logger import _audit_logger
+
+            if _audit_logger is not None:
+                _audit_logger.log(outcome)
+        except Exception:
+            logger.debug("audit log skipped", exc_info=True)
+
     async def _next_request_id(self) -> str:
         """Generate unique request ID."""
         async with self._request_counter_lock:
@@ -1755,6 +1766,16 @@ def create_app(config: ProxyConfig | None = None) -> FastAPI:
                 if proxy.traffic_learner:
                     await proxy.traffic_learner.start()
 
+                # Audit logging (PRD 3): starts async buffer flush.
+                # When auth is disabled, user_id is None and logging is a no-op.
+                try:
+                    from headroom.audit.logger import init_audit_logger, start_audit_logger
+
+                    init_audit_logger()
+                    await start_audit_logger()
+                except Exception:
+                    logger.debug("audit logger init skipped", exc_info=True)
+
                 # Only start beacon if we acquire the lock (first worker wins)
                 _beacon_is_owner[0] = _try_acquire_beacon_lock()
                 if _beacon_is_owner[0]:
@@ -1779,6 +1800,12 @@ def create_app(config: ProxyConfig | None = None) -> FastAPI:
                 await proxy.traffic_learner.stop()
             if proxy.code_graph_watcher:
                 proxy.code_graph_watcher.stop()
+            # Flush and stop audit buffer (PRD 3)
+            try:
+                from headroom.audit.logger import stop_audit_logger
+                await stop_audit_logger()
+            except Exception:
+                logger.debug("audit logger stop skipped", exc_info=True)
             await proxy.shutdown()
             shutdown_headroom_tracing()
             shutdown_otel_metrics()

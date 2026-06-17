@@ -56,6 +56,12 @@ def _register_commands() -> None:
     except ImportError:
         pass
 
+    # Audit requires neo4j — optional
+    try:
+        from . import audit  # noqa: F401
+    except ImportError:
+        pass
+
     # Memory CLI requires numpy/hnswlib — optional
     try:
         from . import memory  # noqa: F401

@@ -12,6 +12,12 @@ context: |
     - Per-request identity: headroom/proxy/project_context.py (contextvars)
     - CLI subcommands: headroom/cli/ (Click groups registered in main.py::_register_commands)
   Domain: multi-user auth and access control for LLM proxy
+  Workflow: after /opsx:propose completes all artifacts (proposal, design, specs, tasks),
+    invoke the dummy-docs skill to generate DUMMY.MD at the change root — a layman-friendly
+    English explanation of all design decisions with everyday analogies, concrete persona
+    names, real CLI usage examples, and an "At a glance" summary table. The skill will then
+    ask whether to also generate a translated copy (e.g., Portuguese) in the dummy/ directory.
+    Use: Skill tool: skill="dummy-docs", args="change=<name> target=<changeRoot>/DUMMY.MD"
 
 rules:
   proposal:
