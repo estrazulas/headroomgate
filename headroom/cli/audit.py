@@ -121,12 +121,16 @@ def audit_group() -> None:
 @click.option("--last", "last_duration", default="7d", help="Time range (e.g., 24h, 7d, 2w).")
 @click.option("--by-day", is_flag=True, help="Break down by day.")
 @click.option("--by-model", is_flag=True, help="Break down by model.")
+@click.option("--history", is_flag=True, help="Show individual request history instead of aggregates.")
+@click.option("--limit", "history_limit", type=int, default=25, help="Max entries with --history (1-100).")
 def audit_user(
     username: str | None,
     self_scope: bool,
     last_duration: str,
     by_day: bool,
     by_model: bool,
+    history: bool,
+    history_limit: int,
 ) -> None:
     """Show usage for a specific user.
 
@@ -134,8 +138,17 @@ def audit_user(
     Examples:
         headroom audit user alice --last 7d
         headroom audit user --self --last 7d --by-model
+        headroom audit user alice --history --last 7d
+        headroom audit user alice --history --last 7d --limit 10
     """
     from headroom.audit.access import AuditAccessError, enforce_scope, resolve_scope
+    # Validate flags early — no Neo4j access needed
+    if history and (by_day or by_model):
+        raise click.UsageError(
+            "--history is mutually exclusive with --by-day and --by-model."
+        )
+    history_limit = max(1, min(history_limit, 100))
+
     from headroom.audit.store import AuditStore
 
     identity = _resolve_caller_identity()
@@ -152,6 +165,7 @@ def audit_user(
     if self_scope:
         target_user_id = user_id
         display_name = caller_username
+        target_team = scope.team
     elif username:
         try:
             enforce_scope(scope, target_user=username)
@@ -168,9 +182,40 @@ def audit_user(
             raise SystemExit(1)
         target_user_id = user.user_id
         display_name = username
+        target_team = user.team
     else:
         click.echo("Error: specify a username or --self.", err=True)
         raise SystemExit(1)
+
+    # --- history mode ---
+    if history:
+        team_filter = None if scope.is_admin else scope.team
+        rows = store.get_user_history(
+            target_user_id, since=since, limit=history_limit, team=team_filter
+        )
+
+        table = Table(title=f"{display_name} — request history (last {last_duration})")
+        table.add_column("Timestamp")
+        table.add_column("Model")
+        table.add_column("Tokens")
+        table.add_column("Latency")
+        table.add_column("Summary")
+
+        for r in rows:
+            ts = r.get("timestamp", "")
+            if hasattr(ts, "strftime"):
+                ts = ts.strftime("%Y-%m-%d %H:%M")
+            summary = str(r.get("summary", "") or "")[:120]
+            table.add_row(
+                ts,
+                str(r.get("model", "")),
+                f"{r.get('input_tokens', 0):,}/{r.get('output_tokens', 0):,}",
+                f"{r.get('latency_ms', 0):.0f}ms",
+                summary,
+            )
+        console.print(table)
+        store.close()
+        return
 
     rows = store.query_user_usage(target_user_id, since=since, by_day=by_day, by_model=by_model)
 

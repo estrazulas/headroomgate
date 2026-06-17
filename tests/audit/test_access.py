@@ -62,3 +62,15 @@ class TestEnforceScope:
         scope = resolve_scope("u_maria", "maria", "team_lead", "backend")
         # Should not raise
         enforce_scope(scope, target_team="backend")
+
+    def test_team_lead_own_team_user_allowed(self) -> None:
+        """Team lead can query a user in their own team."""
+        scope = resolve_scope("u_maria", "maria", "team_lead", "backend")
+        # Should not raise — joao is in the same team
+        enforce_scope(scope, target_user="joao", target_team="backend")
+
+    def test_team_lead_cross_team_user_denied(self) -> None:
+        """Team lead cannot query a user in another team."""
+        scope = resolve_scope("u_maria", "maria", "team_lead", "backend")
+        with pytest.raises(AuditAccessError, match="outside your scope"):
+            enforce_scope(scope, target_user="pedro", target_team="frontend")

@@ -99,7 +99,8 @@ class AuditStore:
                 latency_ms: entry.latency_ms,
                 cache_hit: entry.cache_hit,
                 status_code: entry.status_code,
-                timestamp: datetime(entry.timestamp)
+                timestamp: datetime(entry.timestamp),
+                summary: entry.summary
             })
             WITH r, entry
             MATCH (u:User {user_id: entry.user_id})
@@ -239,6 +240,50 @@ class AuditStore:
             """,
             {"since": since.isoformat() if since else None},
         )
+
+    # ------------------------------------------------------------------
+    # history
+    # ------------------------------------------------------------------
+
+    def get_user_history(
+        self,
+        user_id: str,
+        since: datetime | None = None,
+        limit: int = 25,
+        team: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return individual request history for *user_id*, most recent first.
+
+        Parameters:
+            user_id: The user whose history to fetch.
+            since: Optional UTC datetime filter (requests after this time).
+            limit: Max entries to return (clamped 1-100 by caller).
+            team: Optional team filter for team-lead access scope.
+        """
+        cypher = """
+            MATCH (r:RequestLog {user_id: $user_id})
+            WHERE $since IS NULL OR r.timestamp >= datetime($since)
+            """
+        if team:
+            cypher += " AND r.team = $team"
+        cypher += """
+            RETURN r.timestamp AS timestamp,
+                   r.model AS model,
+                   r.input_tokens AS input_tokens,
+                   r.output_tokens AS output_tokens,
+                   r.latency_ms AS latency_ms,
+                   r.summary AS summary
+            ORDER BY r.timestamp DESC
+            LIMIT $limit
+            """
+        params: dict[str, Any] = {
+            "user_id": user_id,
+            "since": since.isoformat() if since else None,
+            "limit": limit,
+        }
+        if team:
+            params["team"] = team
+        return self._run(cypher, params)
 
     # ------------------------------------------------------------------
     # purge

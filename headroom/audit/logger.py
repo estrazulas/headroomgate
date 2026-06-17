@@ -71,6 +71,8 @@ class AuditLogger:
         username = get_current_username() or "unknown"
         team = get_current_team() or ""
 
+        summary = _build_summary(outcome)
+
         entry = {
             "request_id": outcome.request_id,
             "user_id": user_id,
@@ -85,12 +87,12 @@ class AuditLogger:
             "cache_hit": outcome.from_response_cache,
             "status_code": 200,
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "summary": summary or "",
         }
 
         self._buffer.enqueue(entry)
 
         if self._semantic_enabled and self._semantic.is_available:
-            summary = _build_summary(outcome)
             if summary:
                 self._semantic.log_request(
                     request_id=outcome.request_id,

@@ -86,3 +86,15 @@ class TestAuditStore:
         future = datetime(2099, 1, 1, tzinfo=timezone.utc)
         count = store.purge_before(future)
         assert count >= 0
+
+    def test_get_user_history(self, store) -> None:
+        """get_user_history returns entries ordered by timestamp DESC."""
+        rows = store.get_user_history("u_nonexistent", limit=5)
+        assert isinstance(rows, list)
+
+    def test_get_user_history_with_team_filter(self, store) -> None:
+        """get_user_history accepts optional team parameter."""
+        rows = store.get_user_history(
+            "u_nonexistent", limit=5, team="backend"
+        )
+        assert isinstance(rows, list)

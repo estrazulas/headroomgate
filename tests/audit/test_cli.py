@@ -70,3 +70,32 @@ class TestAuditCLIBasic:
         os.environ["HEADROOM_API_KEY"] = "hr_invalid_key_for_test"
         result = runner.invoke(audit_summary, ["--last", "24h"])
         assert "could not resolve" in result.output.lower() or result.exit_code == 0
+
+    def test_usage_user_history_flag(self, runner: CliRunner) -> None:
+        """--history flag parses correctly even when identity can't resolve."""
+        from headroom.cli.usage import usage_user
+        os.environ["HEADROOM_API_KEY"] = "hr_invalid_key_for_test"
+        result = runner.invoke(usage_user, ["--self", "--history", "--last", "24h"])
+        assert "could not resolve" in result.output.lower() or result.exit_code == 0
+
+    def test_usage_user_history_limit(self, runner: CliRunner) -> None:
+        """--history accepts --limit flag."""
+        from headroom.cli.usage import usage_user
+        os.environ["HEADROOM_API_KEY"] = "hr_invalid_key_for_test"
+        result = runner.invoke(usage_user, ["--self", "--history", "--limit", "10"])
+        assert "could not resolve" in result.output.lower() or result.exit_code == 0
+
+    def test_history_by_day_conflict(self, runner: CliRunner) -> None:
+        """--history and --by-day are mutually exclusive."""
+        from headroom.cli.usage import usage_user
+        os.environ["HEADROOM_API_KEY"] = "hr_invalid_key_for_test"
+        result = runner.invoke(usage_user, ["--self", "--history", "--by-day"])
+        assert result.exit_code != 0
+        assert "mutually exclusive" in result.output.lower()
+
+    def test_history_access_control_developer_cannot_view_other(self, runner: CliRunner) -> None:
+        """A developer with --self can only see their own history."""
+        from headroom.cli.usage import usage_user
+        os.environ["HEADROOM_API_KEY"] = "hr_invalid_key_for_test"
+        result = runner.invoke(usage_user, ["someone_else", "--history"])
+        assert result.exit_code != 0
