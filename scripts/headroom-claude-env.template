@@ -1,0 +1,15 @@
+# Headroom proxy configuration
+# -------------------------------------------------------------------
+# Copy this file to ~/.config/headroom/env and fill in your key:
+#
+#   mkdir -p ~/.config/headroom
+#   cp scripts/headroom-claude-env.template ~/.config/headroom/env
+#   chmod 600 ~/.config/headroom/env
+#   # edit ~/.config/headroom/env — paste your HEADROOM_API_KEY
+# -------------------------------------------------------------------
+
+# Your Headroom API key (hr_...) — get this from your admin
+HEADROOM_API_KEY=hr_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Optional: custom proxy URL if not running locally
+# HEADROOM_PROXY_URL=http://proxy.empresa.com:8787

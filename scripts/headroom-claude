@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# headroom-claude — Connect Claude Code through a Headroom proxy
+#
+# Sources your Headroom API key from ~/.config/headroom/env
+# and routes all Claude Code traffic through the proxy.
+#
+# The proxy handles:
+#   auth (who you are) → provider key injection → audit log
+#
+# You only need your Headroom API key (hr_...).
+# Provider keys live on the server, never on your machine.
+#
+# Usage:
+#   headroom-claude [--proxy-url URL] [-- claude-args...]
+#   headroom-claude --help
+#
+# Examples:
+#   headroom-claude "Explain Python decorators"
+#   headroom-claude --proxy-url http://proxy.empresa.com:8787
+#   headroom-claude -- --model claude-sonnet-4-6
+#
+# Works with: Claude Code, or any Anthropic-compatible client.
+# For OpenAI-compatible clients, set OPENAI_BASE_URL instead.
+
+set -euo pipefail
+
+# ---- defaults -----------------------------------------------------------
+CONFIG_FILE="${HOME}/.config/headroom/env"
+DEFAULT_PROXY_URL="http://localhost:8787"
+PROXY_URL=""
+
+# ---- usage ---------------------------------------------------------------
+usage() {
+    cat <<'EOF'
+headroom-claude — Connect Claude Code through a Headroom proxy.
+
+Usage:
+  headroom-claude [--proxy-url URL] [-- claude-args...]
+
+Options:
+  --proxy-url URL  Headroom proxy base URL (default: http://localhost:8787,
+                   also read from HEADROOM_PROXY_URL in config file).
+  --help           Show this message.
+  --               Everything after -- is passed to claude.
+
+Config file (~/.config/headroom/env):
+  HEADROOM_API_KEY=hr_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  # HEADROOM_PROXY_URL=http://proxy.empresa.com:8787
+
+Quick test (curl):
+  source ~/.config/headroom/env
+  curl -H "x-api-key: $HEADROOM_API_KEY" http://localhost:8787/v1/messages ...
+
+More: see docs/auth.md
+EOF
+    exit 0
+}
+
+# ---- parse args ----------------------------------------------------------
+CLAUDE_ARGS=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --proxy-url) PROXY_URL="$2"; shift 2 ;;
+        --help|-h)   usage ;;
+        --)          shift; CLAUDE_ARGS+=("$@"); break ;;
+        *)           CLAUDE_ARGS+=("$1"); shift ;;
+    esac
+done
+
+# ---- load config ---------------------------------------------------------
+if [[ -f "$CONFIG_FILE" ]]; then
+    # shellcheck source=/dev/null
+    source "$CONFIG_FILE"
+fi
+
+# ---- resolve proxy URL ---------------------------------------------------
+if [[ -z "$PROXY_URL" ]]; then
+    PROXY_URL="${HEADROOM_PROXY_URL:-$DEFAULT_PROXY_URL}"
+fi
+# Strip trailing slash
+PROXY_URL="${PROXY_URL%/}"
+
+# ---- validate ------------------------------------------------------------
+if [[ -z "${HEADROOM_API_KEY:-}" ]]; then
+    cat >&2 <<EOF
+ERROR: HEADROOM_API_KEY is not set.
+
+You need a Headroom API key (hr_...) from your admin.
+Create the config file:
+
+  mkdir -p ~/.config/headroom
+  cat > ~/.config/headroom/env <<'INNER'
+HEADROOM_API_KEY=hr_your_key_here
+# HEADROOM_PROXY_URL=http://proxy.empresa.com:8787
+INNER
+  chmod 600 ~/.config/headroom/env
+
+Then retry.
+EOF
+    exit 1
+fi
+
+# ---- export env vars for Claude Code -------------------------------------
+export ANTHROPIC_BASE_URL="$PROXY_URL"
+export ANTHROPIC_AUTH_TOKEN="$HEADROOM_API_KEY"
+
+# Keep Claude Code tool search on (prevents context inflation)
+export ENABLE_TOOL_SEARCH=true
+
+# Clear provider keys so they cannot bypass the proxy
+unset ANTHROPIC_API_KEY
+unset OPENAI_API_KEY
+unset DEEPSEEK_API_KEY
+
+# ---- launch --------------------------------------------------------------
+exec claude "${CLAUDE_ARGS[@]}"

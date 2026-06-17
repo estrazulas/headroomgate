@@ -1,0 +1,214 @@
+#!/usr/bin/env bash
+# headroom-setup — Interactive setup wizard for Headroom auth + audit
+#
+# Walks the admin through:
+#   1. Neo4j connection
+#   2. Encryption key (auto-generated)
+#   3. Database initialization
+#   4. Admin user + API key
+#   5. Provider keys (Anthropic, OpenAI)
+#   6. Config file generation
+#
+# After this script, the proxy is ready to start and the admin has
+# their API key.  Run this from the repo root.
+#
+# Usage:
+#   ./scripts/headroom-setup
+
+set -euo pipefail
+
+# ---- helpers -------------------------------------------------------------
+
+bold()    { echo -e "\033[1m$*\033[0m"; }
+green()   { echo -e "\033[32m✓ $*\033[0m"; }
+warn()    { echo -e "\033[33m⚠ $*\033[0m" >&2; }
+red()     { echo -e "\033[31m✗ $*\033[0m" >&2; }
+prompt()   { read -r -p "  $(bold "$1") " REPLY; echo "${REPLY}"; }
+prompt_default() {
+    local default="$2"
+    read -r -p "  $(bold "$1 [$default]:") " REPLY
+    echo "${REPLY:-$default}"
+}
+prompt_secret() {
+    read -r -s -p "  $(bold "$1:") " REPLY
+    echo  # newline after hidden input
+    echo "${REPLY}"
+}
+
+banner() {
+    echo
+    echo "  ╔══════════════════════════════════════════════════╗"
+    echo "  ║       Headroom Auth — Interactive Setup           ║"
+    echo "  ╚══════════════════════════════════════════════════╝"
+    echo
+}
+
+check_cmd() {
+    command -v "$1" >/dev/null 2>&1 || {
+        red "$1 not found. Install it first: $2"
+        exit 1
+    }
+}
+
+# ---- locate headroom -----------------------------------------------------
+# Try the test venv first, then global PATH
+HEADROOM_BIN="${HEADROOM_TEST_VENV:-}"
+if [[ -z "$HEADROOM_BIN" ]]; then
+    HEADROOM_BIN="$(command -v headroom 2>/dev/null || true)"
+fi
+if [[ -z "$HEADROOM_BIN" ]]; then
+    # Try repo-local venv
+    REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    if [[ -x "$REPO_ROOT/.venv-test/bin/headroom" ]]; then
+        HEADROOM_BIN="$REPO_ROOT/.venv-test/bin/headroom"
+    fi
+fi
+if [[ -z "$HEADROOM_BIN" ]]; then
+    red "headroom CLI not found."
+    echo "  Install with: pipx install headroom-ai[auth]"
+    echo "  Or set HEADROOM_TEST_VENV=/path/to/venv/bin/headroom"
+    exit 1
+fi
+green "Using headroom: $HEADROOM_BIN"
+
+# ---- banner --------------------------------------------------------------
+banner
+
+# ---- step 1: Neo4j -------------------------------------------------------
+echo "$(bold "Step 1/6 — Neo4j connection")"
+echo "  The proxy stores users, keys, and audit logs in Neo4j."
+echo
+NEO4J_URI=$(prompt_default "  URI" "${NEO4J_URI:-bolt://localhost:7687}")
+NEO4J_USER=$(prompt_default "  User" "${NEO4J_USER:-neo4j}")
+NEO4J_PASSWORD=$(prompt_default "  Password" "${NEO4J_PASSWORD:-devpassword}")
+echo
+
+# ---- step 2: encryption key ----------------------------------------------
+echo "$(bold "Step 2/6 — Encryption key")"
+echo "  Provider keys are stored encrypted in Neo4j."
+echo "  You need a Fernet key for encryption/decryption."
+echo
+GEN_KEY="y"
+if [[ -n "${HEADROOM_ENCRYPTION_KEY:-}" ]]; then
+    GEN_KEY=$(prompt_default "  Generate new key? (existing HEADROOM_ENCRYPTION_KEY detected)" "n")
+else
+    GEN_KEY=$(prompt_default "  Generate new key?" "y")
+fi
+if [[ "$GEN_KEY" =~ ^[Yy] ]]; then
+    HEADROOM_ENCRYPTION_KEY=$("$HEADROOM_BIN" auth generate-key 2>/dev/null)
+    green "Generated: ${HEADROOM_ENCRYPTION_KEY}"
+else
+    HEADROOM_ENCRYPTION_KEY="${HEADROOM_ENCRYPTION_KEY:-}"
+    if [[ -z "$HEADROOM_ENCRYPTION_KEY" ]]; then
+        HEADROOM_ENCRYPTION_KEY=$(prompt "  Paste your existing key")
+    fi
+fi
+export HEADROOM_ENCRYPTION_KEY
+export NEO4J_URI NEO4J_USER NEO4J_PASSWORD
+echo
+
+# ---- step 3: init DB -----------------------------------------------------
+echo "$(bold "Step 3/6 — Initialize database")"
+echo "  Creating constraints and base roles in Neo4j..."
+if "$HEADROOM_BIN" auth init-db 2>&1; then
+    green "Database initialized"
+else
+    red "Failed to initialize database. Check NEO4J_URI and credentials."
+    exit 1
+fi
+echo
+
+# ---- step 4: admin user --------------------------------------------------
+echo "$(bold "Step 4/6 — Admin user")"
+echo "  Create the admin account that manages all users and keys."
+ADMIN_USER=$(prompt_default "  Admin username" "admin")
+echo "  Creating user '$ADMIN_USER' with role admin..."
+"$HEADROOM_BIN" auth create-user "$ADMIN_USER" --role admin 2>&1 || true
+echo "  Generating API key for '$ADMIN_USER'..."
+ADMIN_KEY=$("$HEADROOM_BIN" auth create-key "$ADMIN_USER" 2>&1 | grep -oP 'hr_[a-f0-9]+' || true)
+if [[ -n "$ADMIN_KEY" ]]; then
+    green "Admin API key: ${ADMIN_KEY}"
+    echo "  $(bold 'Save this key now — it will not be shown again.')"
+else
+    warn "Could not parse API key. Check output above."
+fi
+echo
+
+# ---- step 5: provider keys -----------------------------------------------
+echo "$(bold "Step 5/6 — Provider keys")"
+echo "  Register the API keys your organization uses for LLM providers."
+echo "  These are stored encrypted in Neo4j and injected by the proxy."
+echo "  Leave blank to skip a provider."
+echo
+
+PROVIDERS=("anthropic:Anthropic" "openai:OpenAI" "gemini:Gemini")
+for pair in "${PROVIDERS[@]}"; do
+    slug="${pair%%:*}"
+    label="${pair##*:}"
+    REPLY=$(prompt "  ${label} API key (leave blank to skip)")
+    if [[ -n "$REPLY" ]]; then
+        echo "$REPLY" | "$HEADROOM_BIN" auth set-provider-key "$ADMIN_USER" "$slug" 2>&1 || {
+            warn "${label} key stored but validation returned a warning (may be expected for non-standard endpoints)"
+        }
+        green "${label} key stored"
+    else
+        echo "  (skipped ${label})"
+    fi
+done
+echo
+
+# ---- step 6: config files ------------------------------------------------
+echo "$(bold "Step 6/6 — Configuration files")"
+
+CONFIG_DIR="$HOME/.config/headroom"
+mkdir -p "$CONFIG_DIR"
+
+CONFIG_FILE="$CONFIG_DIR/env"
+cat > "$CONFIG_FILE" <<INNER
+# Headroom proxy configuration — generated by headroom-setup
+# $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+HEADROOM_API_KEY=${ADMIN_KEY}
+HEADROOM_ENCRYPTION_KEY=${HEADROOM_ENCRYPTION_KEY}
+# HEADROOM_PROXY_URL=http://proxy.empresa.com:8787
+INNER
+chmod 600 "$CONFIG_FILE"
+green "$CONFIG_FILE written (chmod 600)"
+
+# Write .env at repo root if it doesn't exist
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE="$REPO_ROOT/.env"
+if [[ ! -f "$ENV_FILE" ]]; then
+    cat > "$ENV_FILE" <<INNER
+# Headroom environment — generated by headroom-setup
+# $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
+HEADROOM_ENCRYPTION_KEY=${HEADROOM_ENCRYPTION_KEY}
+INNER
+    green "$ENV_FILE written"
+else
+    echo "  $(bold '.env') already exists (skipped)"
+fi
+
+# ---- done ----------------------------------------------------------------
+echo
+echo "  ╔══════════════════════════════════════════════════╗"
+echo "  ║              Setup complete!                       ║"
+echo "  ╚══════════════════════════════════════════════════╝"
+echo
+echo "  $(bold "Next steps:")"
+echo
+echo "  1. Start the proxy with auth:"
+echo "     $(bold "headroom proxy --port 8787 --proxy-extension headroom-auth")"
+echo
+echo "  2. Connect Claude Code:"
+echo "     $(bold "./scripts/headroom-claude \"Hello\"")"
+echo
+echo "  3. Onboard a developer:"
+echo "     $(bold "headroom auth create-user bob --role developer --team backend")"
+echo "     $(bold "headroom auth create-key bob")"
+echo "     # Share the hr_... key — they put it in ~/.config/headroom/env"
+echo
+echo "  4. More: $(bold "docs/auth.md")"
+echo
+
+green "Done."

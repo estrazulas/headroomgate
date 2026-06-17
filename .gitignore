@@ -18,6 +18,9 @@ scripts/*
 !scripts/changelog-gen.py
 !scripts/verify-versions.py
 !scripts/pr-governance.py
+!scripts/headroom-claude
+!scripts/headroom-claude-env.template
+!scripts/headroom-setup
 !scripts/tests/
 !scripts/README.md
 !scripts/repro_codex_replay.py

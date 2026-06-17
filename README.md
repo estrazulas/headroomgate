@@ -188,6 +188,26 @@ Available extras (same as upstream plus the new `[auth]` extra):
 
 ---
 
+## Quick start — auth proxy
+
+| You are a… | Run this |
+|------------|----------|
+| **Admin** setting up the proxy | `./scripts/headroom-setup` |
+| **Developer** connecting your client | See [docs/auth.md](docs/auth.md) |
+| **Developer** using Claude Code | `./scripts/headroom-claude "prompt"` |
+
+```bash
+# Admin: interactive setup (Neo4j, encryption key, users, provider keys)
+./scripts/headroom-setup
+
+# Developer: save your key and connect
+cp scripts/headroom-claude-env.template ~/.config/headroom/env
+# edit ~/.config/headroom/env with your hr_... key
+./scripts/headroom-claude "Explain Python decorators"
+```
+
+---
+
 ## Agent compatibility matrix
 
 | Agent       | `headroom wrap` | Notes                            |
