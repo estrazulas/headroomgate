@@ -17,24 +17,71 @@ automatically. You never see or store them.
 
 ---
 
-## Method 1 — Claude Code (recommended)
+## Admin setup
 
-Use the `headroom-claude` wrapper:
+If you can't use the interactive `scripts/headroom-setup` wizard (different OS,
+remote Neo4j, CI/CD), here is the manual equivalent:
 
 ```bash
-# One-time setup: save your key
-mkdir -p ~/.config/headroom
-cat > ~/.config/headroom/env <<'EOF'
-HEADROOM_API_KEY=hr_your_key_here
-# HEADROOM_PROXY_URL=http://proxy.empresa.com:8787
-EOF
-chmod 600 ~/.config/headroom/env
+# 1. Start infrastructure
+docker compose up -d neo4j qdrant
 
+# 2. Set environment
+export NEO4J_URI=bolt://localhost:7687
+export NEO4J_USER=neo4j
+export NEO4J_PASSWORD=devpassword
+export HEADROOM_ENCRYPTION_KEY=$(headroom auth generate-key)
+
+# 3. Initialize database
+headroom auth init-db
+
+# 4. Create admin user + API key
+headroom auth create-user admin --role admin
+headroom auth create-key admin
+# Save the hr_... key shown above.
+
+# 5. Register provider keys (stored encrypted in Neo4j)
+headroom auth set-provider-key admin anthropic   # paste key when prompted
+headroom auth set-provider-key admin openai      # paste key when prompted
+
+# 6. (Optional) Create team and onboard a developer
+headroom auth create-team backend
+headroom auth create-user bob --role developer --team backend
+headroom auth create-key bob
+# Share the hr_... key with bob.
+
+# 7. Start the proxy
+headroom proxy --port 8787 --proxy-extension headroom-auth
+```
+
+---
+
+## Developer setup
+
+One-time config for developers:
+
+```bash
+mkdir -p ~/.config/headroom
+cp scripts/headroom-env.template ~/.config/headroom/env
+# Edit ~/.config/headroom/env — paste the HEADROOM_API_KEY your admin gave you
+chmod 600 ~/.config/headroom/env
+```
+
+Now pick a connection method below.
+
+---
+
+## Method 1 — Wrapper (simplest)
+
+Use the `headroom-connect` wrapper script. It sets the environment and
+launches your LLM client through the proxy:
+
+```bash
 # Install the wrapper (optional — or run from repo)
-cp scripts/headroom-claude ~/.local/bin/
+cp scripts/headroom-connect ~/.local/bin/
 
 # Connect
-headroom-claude "Explain Python decorators"
+headroom-connect "Explain Python decorators"
 ```
 
 **What happens:** The proxy authenticates you, injects the provider key, and
@@ -49,8 +96,8 @@ logs the request for audit. You never touch a provider key.
 | `-- claude-args...` | Pass arguments to `claude` |
 
 ```bash
-headroom-claude --proxy-url http://proxy.empresa.com:8787 "Hello"
-headroom-claude -- --model claude-sonnet-4-6 --max-turns 5
+headroom-connect --proxy-url http://proxy.empresa.com:8787 "Hello"
+headroom-connect -- --model claude-sonnet-4-6 --max-turns 5
 ```
 
 ---
@@ -145,7 +192,7 @@ message = client.messages.create(
 Your config file is missing. Run:
 ```bash
 mkdir -p ~/.config/headroom
-cp scripts/headroom-claude-env.template ~/.config/headroom/env
+cp scripts/headroom-connect-env.template ~/.config/headroom/env
 # Edit ~/.config/headroom/env with your key
 ```
 

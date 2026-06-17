@@ -3,7 +3,7 @@
 # Copy this file to ~/.config/headroom/env and fill in your key:
 #
 #   mkdir -p ~/.config/headroom
-#   cp scripts/headroom-claude-env.template ~/.config/headroom/env
+#   cp scripts/headroom-env.template ~/.config/headroom/env
 #   chmod 600 ~/.config/headroom/env
 #   # edit ~/.config/headroom/env — paste your HEADROOM_API_KEY
 # -------------------------------------------------------------------
