@@ -53,7 +53,7 @@ This fork adds **multi-user auth and access control** on top of the compression 
 - **Structured logging (Neo4j)** — every request is recorded: who made it, which model, how many tokens, latency, cache hit/miss
 - **Semantic search (Qdrant)** — request prompts are embedded as vectors so you can search by meaning: *"show me everything about database migrations"*
 - **Async buffer** — writes are batched in memory (50 entries or 5 seconds, whichever comes first), so audit logging adds **zero latency** to the client response
-- **CLI analytics** — `headroom usage summary`, `headroom usage top --by-tokens`, `headroom usage search "architecture patterns"`
+- **CLI analytics** — `headroom usage summary`, `headroom usage top --by-tokens`, `headroom usage user alice --history --last 7d`, `headroom usage search "architecture patterns"`
 
 ---
 

@@ -29,7 +29,7 @@
 - `AuditBuffer`: async deque, batch flush 50 entries / 5s, retry on failure
 - `AuditStore`: 5 Cypher query methods + batch insert + purge for :RequestLog nodes
 - `SemanticLogger`: fastembed BAAI/bge-small-en-v1.5 → Qdrant, best-effort
-- `headroom usage` CLI: user, team, top, summary, search, purge subcommands
+- `headroom usage` CLI: user (with --history), team, top, summary, search, purge subcommands
 - `Scope`: role-based access (developer→self, team_lead→team, admin→all)
 - Proxy integration: lifespan start/stop + outcome emission hook in `_record_request_outcome`
 - 24 tests (buffer, access, CLI, semantic, store)

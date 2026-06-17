@@ -140,12 +140,22 @@ def _build_summary(
     outcome: Any,
     max_words: int = 200,
 ) -> str:
-    """Build a short textual summary from a RequestOutcome for embedding.
+    """Build a textual summary from a RequestOutcome for embedding and history.
 
-    Uses the provider and model as context. Full message bodies are
-    not available on RequestOutcome by default, so the summary is
-    metadata-rich rather than content-rich.
+    Tries to extract the last user message content from request_messages
+    (available when proxy runs with --log-full-messages). Falls back to
+    metadata if message bodies are not available.
     """
+    # Try to extract actual user message content
+    user_text = _extract_user_message(outcome)
+    if user_text:
+        # Truncate to max_words
+        words = user_text.split()
+        if len(words) > max_words:
+            user_text = " ".join(words[:max_words])
+        return user_text
+
+    # Fallback: metadata-only summary
     parts = [
         f"Request to {outcome.provider} using model {outcome.model}.",
         f"Input tokens: {outcome.optimized_tokens}, output tokens: {outcome.output_tokens}.",
@@ -156,3 +166,32 @@ def _build_summary(
     if len(words) > max_words:
         summary = " ".join(words[:max_words])
     return summary
+
+
+def _extract_user_message(outcome: Any) -> str:
+    """Extract the last user message from a RequestOutcome, if available.
+
+    Checks outcome.request_messages (populated when log_full_messages is on)
+    and outcome.compressed_messages for the last message with role="user".
+    """
+    messages = getattr(outcome, "request_messages", None) or getattr(
+        outcome, "compressed_messages", None
+    )
+    if not messages:
+        return ""
+    # Find the last user message
+    for msg in reversed(messages):
+        role = msg.get("role", "") if isinstance(msg, dict) else getattr(msg, "role", "")
+        if role == "user":
+            content = msg.get("content", "") if isinstance(msg, dict) else getattr(msg, "content", "")
+            if isinstance(content, list):
+                # Anthropic format: content is list of blocks
+                parts = []
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        parts.append(block.get("text", ""))
+                content = " ".join(parts)
+            if isinstance(content, str) and content.strip():
+                return content.strip()
+            return str(content).strip()
+    return ""
