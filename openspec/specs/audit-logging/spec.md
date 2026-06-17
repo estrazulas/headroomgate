@@ -46,8 +46,23 @@ The system SHALL accumulate `(:RequestLog)` entries in an in-memory deque buffer
 - **AND** if the retry fails, the entries are dropped with an error log
 
 ### Requirement: RequestLog schema
-Each `(:RequestLog)` node SHALL include: `request_id`, `user_id`, `username` (denormalized), `team` (denormalized), `provider`, `model`, `input_tokens`, `output_tokens`, `tokens_saved`, `latency_ms`, `cache_hit`, `status_code`, and `timestamp`.
+Each `(:RequestLog)` node SHALL include: `request_id`, `user_id`, `username` (denormalized), `team` (denormalized), `provider`, `model`, `input_tokens`, `output_tokens`, `tokens_saved`, `latency_ms`, `cache_hit`, `status_code`, `timestamp`, and `summary`.
 
 #### Scenario: Complete RequestLog node
 - **WHEN** a request log is created
 - **THEN** all schema fields are populated from the RequestOutcome and identity contextvar
+
+### Requirement: Request summary stored in Neo4j
+The system SHALL store the first 500 characters of the user's request message as a `summary` property on each `(:RequestLog)` node in Neo4j. The summary enables direct history listing without requiring Qdrant semantic search.
+
+#### Scenario: Summary stored during batch flush
+- **WHEN** the audit buffer flushes a batch of authenticated requests to Neo4j
+- **THEN** each `(:RequestLog)` node includes a `summary` property containing the first 500 characters of the user's request message
+
+#### Scenario: Summary truncated for long requests
+- **WHEN** a user's request message exceeds 500 characters
+- **THEN** the `summary` property contains only the first 500 characters
+
+#### Scenario: Summary empty for requests without user message
+- **WHEN** an authenticated request has no user message (e.g., system-only prompts)
+- **THEN** the `summary` property is set to an empty string
