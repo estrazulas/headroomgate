@@ -1,4 +1,4 @@
-# 🔨 Build & Release Guide — Headroom Sanitizer
+# 🔨 Build & Release Guide — HeadroomGate
 
 Este repositório é um fork seguro do [headroom](https://github.com/chopratejas/headroom) para uso interno.  
 Aqui você **compila do código-fonte** e publica um release próprio, eliminando a dependência do binário opaco do PyPI.
@@ -27,7 +27,7 @@ gh auth login
 ### 1. Sincronizar com upstream
 
 ```bash
-cd headroom_sanitizer
+cd headroomgate
 git fetch upstream --tags
 git checkout main
 git merge upstream/main
@@ -67,7 +67,7 @@ gh release create "v${VERSAO}" dist/*.whl \
 ```bash
 VERSAO="0.25.0"  # ajuste para a versão publicada
 pipx install --force \
-  "https://github.com/estrazulas/headroom_sanitizer/releases/download/v${VERSAO}/headroom_ai-${VERSAO}-cp310-abi3-manylinux_2_35_x86_64.whl[proxy,code,mcp]"
+  "https://github.com/estrazulas/headroomgate/releases/download/v${VERSAO}/headroom_ai-${VERSAO}-cp310-abi3-manylinux_2_35_x86_64.whl[proxy,code,mcp]"
 ```
 
 ---

@@ -11,7 +11,7 @@
 <p align="center"><strong>60–95% fewer tokens · library · proxy · MCP · 6 algorithms · local-first · reversible</strong></p>
 
 <p align="center">
-  <a href="https://github.com/estrazulas/headroom_sanitizer"><img src="https://img.shields.io/badge/fork-sanitized-blue.svg" alt="Fork: sanitized"></a>
+  <a href="https://github.com/estrazulas/headroomgate"><img src="https://img.shields.io/badge/fork-sanitized-blue.svg" alt="Fork: sanitized"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
   <a href="https://github.com/chopratejas/headroom"><img src="https://img.shields.io/badge/upstream-headroom-8A2BE2.svg" alt="Upstream: chopratejas/headroom"></a>
 </p>
@@ -188,9 +188,9 @@ Install the latest release wheel directly from GitHub:
 
 ```bash
 pipx install --force \
-  "https://github.com/estrazulas/headroom_sanitizer/releases/download/v0.26.0.1/headroom_ai-0.26.0.1-cp310-abi3-manylinux_2_35_x86_64.whl[proxy,code,mcp,auth]"
+  "https://github.com/estrazulas/headroomgate/releases/download/v0.26.0.1/headroom_ai-0.26.0.1-cp310-abi3-manylinux_2_35_x86_64.whl[proxy,code,mcp,auth]"
 pipx inject headroom-ai \
-  "https://github.com/estrazulas/headroom_sanitizer/releases/download/v0.26.0.1/headroom_auth-0.1.0-py3-none-any.whl"
+  "https://github.com/estrazulas/headroomgate/releases/download/v0.26.0.1/headroom_auth-0.1.0-py3-none-any.whl"
 ```
 
 Available extras:
@@ -294,9 +294,9 @@ This fork lets you compile from audited source instead of running opaque PyPI bi
 
 ```bash
 pipx install --force \
-  "https://github.com/estrazulas/headroom_sanitizer/releases/download/v0.26.0.1/headroom_ai-0.26.0.1-cp310-abi3-manylinux_2_35_x86_64.whl[proxy,code,mcp,auth]"
+  "https://github.com/estrazulas/headroomgate/releases/download/v0.26.0.1/headroom_ai-0.26.0.1-cp310-abi3-manylinux_2_35_x86_64.whl[proxy,code,mcp,auth]"
 pipx inject headroom-ai \
-  "https://github.com/estrazulas/headroom_sanitizer/releases/download/v0.26.0.1/headroom_auth-0.1.0-py3-none-any.whl"
+  "https://github.com/estrazulas/headroomgate/releases/download/v0.26.0.1/headroom_auth-0.1.0-py3-none-any.whl"
 ```
 
 ### Build from source

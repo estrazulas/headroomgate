@@ -68,8 +68,8 @@ fi
 if [[ -z "$HEADROOM_BIN" ]]; then
     red "headroom CLI not found."
     echo "  Install with:"
-    echo "    pipx install --force \"https://github.com/estrazulas/headroom_sanitizer/releases/download/v0.26.0.1/headroom_ai-0.26.0.1-cp310-abi3-manylinux_2_35_x86_64.whl[proxy,code,mcp,auth]\""
-    echo "    pipx inject headroom-ai \"https://github.com/estrazulas/headroom_sanitizer/releases/download/v0.26.0.1/headroom_auth-0.1.0-py3-none-any.whl\""
+    echo "    pipx install --force \"https://github.com/estrazulas/headroomgate/releases/download/v0.26.0.1/headroom_ai-0.26.0.1-cp310-abi3-manylinux_2_35_x86_64.whl[proxy,code,mcp,auth]\""
+    echo "    pipx inject headroom-ai \"https://github.com/estrazulas/headroomgate/releases/download/v0.26.0.1/headroom_auth-0.1.0-py3-none-any.whl\""
     echo "  Or set HEADROOM_TEST_VENV=/path/to/venv/bin/headroom"
     exit 1
 fi
