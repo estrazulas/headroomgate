@@ -5,16 +5,16 @@
   ██╔══██║██╔══╝  ██╔══██║██║  ██║██╔══██╗██║   ██║██║   ██║██║╚██╔╝██║
   ██║  ██║███████╗██║  ██║██████╔╝██║  ██║╚██████╔╝╚██████╔╝██║ ╚═╝ ██║
   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝     ╚═╝
-   ██████╗  █████╗ ████████╗███████╗
-  ██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝
-  ██║  ███╗███████║   ██║   █████╗
-  ██║   ██║██╔══██║   ██║   ██╔══╝
-  ╚██████╔╝██║  ██║   ██║   ███████╗
-   ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝
+                    ██████╗  █████╗ ████████╗███████╗
+                   ██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝
+                   ██║  ███╗███████║   ██║   █████╗  
+                   ██║   ██║██╔══██║   ██║   ██╔══╝  
+                   ╚██████╔╝██║  ██║   ██║   ███████╗
+                    ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝
                   The context compression gateway for AI agents
 </pre></div>
 
-<p align="center"><strong>60–95% fewer tokens · library · proxy · MCP · 6 algorithms · local-first · reversible</strong></p>
+<p align="center"><strong>60–95% fewer tokens · user management · audit trail · centralized API keys · 6 algorithms · local-first</strong></p>
 
 <p align="center">
   <a href="https://github.com/estrazulas/headroomgate"><img src="https://img.shields.io/badge/fork-sanitized-blue.svg" alt="Fork: sanitized"></a>
