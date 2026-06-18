@@ -215,23 +215,13 @@ The **headroom-auth plugin** (separate wheel) adds the auth middleware itself �
 
 > **Note:** Auth requires a running Neo4j instance. Set `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD` in your environment.
 
-For a streamlined setup with systemd, DeepClaude wrappers, and
-multi-mode installation, see the companion repo: **[deepclaude_with_headroom](https://github.com/estrazulas/deepclaude_with_headroom)**.
+### Easy setup with Claude Code and DeepSeek example
 
-### Easy setup instructions
+For a one-command install with systemd service, DeepClaude wrappers
+(`deepclaude` / `deepclaudehr`), and three setup modes — standalone proxy,
+HeadroomGate server, and remote dev client — see the companion repo:
 
-`install.sh` provides three modes:
-
-| Mode | What it does | LLM keys | Auth |
-|------|-------------|----------|------|
-| **1 — Standalone proxy** | Headroom from PyPI, localhost only. Compression, cache, code-aware, MCP. Single-user. | Local (`DEEPSEEK_API_KEY`) | None |
-| **2 — HeadroomGate server** | Custom release + auth plugin. Neo4j bootstrap, user management, audit log. Binds to `0.0.0.0` — team-ready. | Stored encrypted in Neo4j, injected by proxy | `HEADROOM_API_KEY` (`hr_...`) per user |
-| **3 — Remote dev client** | Connects to an existing HeadroomGate proxy (mode 2). Installs **only** the client wrapper + your `HEADROOM_API_KEY`. No local proxy, Neo4j, or Qdrant. | **None** — the proxy injects them | Your `HEADROOM_API_KEY` (`hr_...`) to authenticate with the proxy |
-
-Also included:
-- `deepclaude` / `deepclaudehr` — Claude Code wrappers (direct to DeepSeek,
-  or routed through the Headroom proxy)
-- `headroom.service` — Systemd unit with security hardening
+**[deepclaude_with_headroom](https://github.com/estrazulas/deepclaude_with_headroom)**
 
 ---
 
