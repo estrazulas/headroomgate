@@ -266,52 +266,15 @@ Any OpenAI-compatible client works via `headroom proxy`. MCP-native: `headroom m
 
 ---
 
-## How to build / install
+## How to build
 
-This fork lets you compile from audited source instead of running opaque PyPI binaries.
-
-### One-command install (pre-built wheel)
+From the repo root, run:
 
 ```bash
-pipx install --force \
-  "https://github.com/estrazulas/headroomgate/releases/download/v0.26.0.1/headroom_ai-0.26.0.1-cp310-abi3-manylinux_2_35_x86_64.whl[proxy,code,mcp,auth]"
-pipx inject headroom-ai \
-  "https://github.com/estrazulas/headroomgate/releases/download/v0.26.0.1/headroom_auth-0.1.0-py3-none-any.whl"
+./rebuild.sh
 ```
 
-### Build from source
-
-```bash
-# 1. Sync with upstream
-git fetch upstream --tags
-git merge upstream/main
-
-# 2. Build wheel (requires Rust + Maturin)
-source "$HOME/.cargo/env"
-rm -rf dist/
-maturin build --release --out dist/
-
-# 3. Build auth plugin
-pyproject-build --outdir dist/ plugins/headroom-auth/
-
-# 4. Publish GitHub Release
-VER=$(grep 'version = ' pyproject.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
-PLUGIN_VER=$(grep 'version = ' plugins/headroom-auth/pyproject.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
-gh release create "v${VER}" dist/headroom_ai-*.whl dist/headroom_auth-*.whl \
-  --title "v${VER} — Build sanitizado" \
-  --notes "Build from commit $(git rev-parse HEAD)."
-
-# 5. Install locally
-WHEEL=$(ls dist/headroom_ai-*.whl | head -1)
-PLUGIN_WHEEL=$(ls dist/headroom_auth-*.whl | head -1)
-pipx install --force "${WHEEL}[proxy,code,mcp,auth]"
-pipx inject headroom-ai "$PLUGIN_WHEEL"
-systemctl --user restart headroom.service
-```
-
-Or use the bundled script: `./rebuild.sh`
-
-Full build guide: [`BUILD.md`](BUILD.md)
+Or follow the step-by-step guide: **[BUILD.md](BUILD.md)**.
 
 ---
 
