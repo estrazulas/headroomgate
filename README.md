@@ -260,6 +260,14 @@ chmod 600 ~/.config/headroom/env
 
 For curl, OpenAI SDK, Anthropic SDK, and troubleshooting: **[docs/auth.md](docs/auth.md)**.
 
+> 💡 **Looking for a one-command install with systemd?**  
+> The companion repo **[deepclaude_with_headroom](https://github.com/estrazulas/deepclaude_with_headroom)**
+> provides an interactive installer with three modes — standalone proxy,
+> HeadroomGate server (binds to `0.0.0.0`, Neo4j auth), and
+> remote dev client (just the wrapper + your API key, no local proxy).
+> Includes `deepclaude` / `deepclaudehr` terminal commands and a hardened
+> systemd service unit.
+
 ---
 
 ## Agent compatibility matrix
