@@ -26,6 +26,20 @@ echo "  OK — all quality checks passed"
 
 VERSAO=$(grep 'version = ' pyproject.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
 echo ""
+echo "=== Syncing release manifest to v${VERSAO} ==="
+MANIFEST=".release-please-manifest.json"
+python3 -c "
+import json
+with open('$MANIFEST') as f:
+    m = json.load(f)
+m['.'] = '$VERSAO'
+with open('$MANIFEST', 'w') as f:
+    json.dump(m, f, indent=2)
+    f.write('\n')
+"
+echo "  $MANIFEST → $VERSAO"
+
+echo ""
 echo "=== Building headroom v${VERSAO} ==="
 rm -rf dist/
 maturin build --release --out dist/
@@ -39,12 +53,45 @@ echo "=== Publishing release v${VERSAO} ==="
 # Source GH_TOKEN from headroom env if available
 [ -f "$HOME/.config/headroom/env" ] && export $(grep -v '^#' "$HOME/.config/headroom/env" | grep 'GH_TOKEN' | xargs) 2>/dev/null || true
 GH_REPO=$(git remote get-url origin 2>/dev/null | sed 's|.*[:/]\([^/]*/[^/]*\)\.git|\1|')
+WHEEL_FILE=$(ls dist/headroom_ai-*.whl | head -1 | xargs basename)
+AUTH_WHEEL_FILE=$(ls dist/headroom_auth-*.whl | head -1 | xargs basename)
+
+NOTES="Build compiled locally from commit $(git rev-parse HEAD).
+
+## Install
+
+### headroom
+
+\`\`\`bash
+pipx install 'headroom-ai[proxy,code,mcp,auth]' --force
+\`\`\`
+
+Or from the release asset:
+
+\`\`\`bash
+curl -LO 'https://github.com/${GH_REPO}/releases/download/v${VERSAO}/${WHEEL_FILE}'
+pipx install --force '${WHEEL_FILE}[proxy,code,mcp,auth]'
+\`\`\`
+
+### headroom-auth plugin
+
+\`\`\`bash
+pipx inject headroom-ai headroom-auth
+\`\`\`
+
+Or from the release asset:
+
+\`\`\`bash
+pipx inject headroom-ai 'https://github.com/${GH_REPO}/releases/download/v${VERSAO}/${AUTH_WHEEL_FILE}'
+rm -f ${WHEEL_FILE} ${AUTH_WHEEL_FILE}
+\`\`\`"
+
 gh release create "v${VERSAO}" \
   dist/headroom_ai-*.whl \
   dist/headroom_auth-*.whl \
   ${GH_REPO:+--repo "$GH_REPO"} \
-  --title "v${VERSAO} — Build sanitizado" \
-  --notes "Build compiled locally from commit $(git rev-parse HEAD)."
+  --title "v${VERSAO}" \
+  --notes "$NOTES"
 
 echo "=== Installing locally ==="
 WHEEL=$(ls dist/headroom_ai-*.whl | head -1)
