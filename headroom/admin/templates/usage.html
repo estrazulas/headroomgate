@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_components.html" import combobox with context %}
 {% block content %}
 <div x-data="usageApp()" x-init="init()" class="space-y-6">
     <!-- Time window selector -->
@@ -64,7 +65,9 @@
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
         <h3 class="font-semibold mb-4">User History</h3>
         <div class="flex items-center gap-3 mb-4">
-            <input type="text" x-model="drilldownUser" placeholder="Username or user_id (e.g. admin)" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none flex-1">
+            <div @combobox-select="drilldownUser = $event.detail" class="flex-1">
+                {{ combobox(endpoint='/manage/api/users', value_key='username', placeholder='Search username...') }}
+            </div>
             <button @click="loadSessions(0)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">Load</button>
         </div>
         <div x-show="sessions.length === 0 && drilldownUser" class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">

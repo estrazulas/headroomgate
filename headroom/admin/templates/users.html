@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_components.html" import combobox with context %}
 {% block content %}
 <div x-data="usersApp()" x-init="init()" class="space-y-6">
     <!-- Controls row -->
@@ -100,10 +101,15 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Team</label>
-                    <input type="text" x-model="form.team" required
-                           {% if user_role == 'team_lead' %}disabled{% endif %}
-                           placeholder="{% if user_role == 'team_lead' %}{{ user_team }}{% else %}e.g. backend{% endif %}"
-                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none disabled:opacity-50">
+                    {% if user_role == 'team_lead' %}
+                    <input type="text" x-model="form.team" required disabled
+                           placeholder="{{ user_team }}"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+                    {% else %}
+                    <div @combobox-select="form.team = $event.detail">
+                        {{ combobox(endpoint='/manage/api/teams', value_key='name', placeholder='Search or type team name...', initial=user_team if user_role == 'team_lead' else '') }}
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
                     <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancel</button>

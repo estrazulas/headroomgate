@@ -378,6 +378,11 @@ async def api_create_user(
     store = _get_auth()
     if store.user_exists(username):
         raise HTTPException(status_code=409, detail=f"User '{username}' already exists")
+    # Non-admin users can only create users in existing teams
+    if user.get("role") != "admin" and not store.team_exists(team):
+        raise HTTPException(
+            status_code=400, detail=f"Team '{team}' does not exist. Create it first."
+        )
 
     new_user = store.create_user(username=username, role=role, team=team)
     return {
@@ -501,10 +506,14 @@ async def api_create_key(
         raise HTTPException(status_code=400, detail="Username is required")
 
     store = _get_auth()
+
+    # Validate user exists (for all roles)
+    target = store.get_user(username)
+    if target is None:
+        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+
+    # Team leads can only create keys for their own team
     if user["role"] == "team_lead":
-        target = store.get_user(username)
-        if target is None:
-            raise HTTPException(status_code=404, detail="User not found")
         if target.team != user.get("team"):
             raise HTTPException(
                 status_code=403, detail="Cannot create key for user outside your team"

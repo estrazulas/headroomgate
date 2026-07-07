@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_components.html" import combobox with context %}
 {% block content %}
 <div x-data="keysApp()" x-init="init()" class="space-y-6">
     <div class="flex items-center justify-between">
@@ -69,7 +70,9 @@
             <form x-show="!createdKey" @submit.prevent="createKey()" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">User</label>
-                    <input type="text" x-model="keyForm.username" required placeholder="username" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                    <div @combobox-select="keyForm.username = $event.detail">
+                        {{ combobox(endpoint='/manage/api/users', value_key='username', placeholder='Search or type username...') }}
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">TTL (days)</label>
