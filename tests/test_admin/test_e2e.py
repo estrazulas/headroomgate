@@ -53,7 +53,7 @@ class TestAdminE2E:
         page.goto(f"{E2E_BASE_URL}/manage/login")
         expect(page).to_have_title(re.compile(r"Login.*Headroom Admin"))
 
-        page.fill("input[name='api_key']", E2E_API_KEY)
+        page.fill("input[name='headroomgate_key']", E2E_API_KEY)
         page.click("button[type='submit']")
 
         # Should redirect to /manage/users
@@ -131,7 +131,7 @@ class TestTeamLeadE2E:
         page = browser.new_page()
 
         page.goto(f"{E2E_BASE_URL}/manage/login")
-        page.fill("input[name='api_key']", E2E_API_KEY)
+        page.fill("input[name='headroomgate_key']", E2E_API_KEY)
         page.click("button[type='submit']")
 
         # Should land on users page
@@ -155,7 +155,7 @@ class TestUsageE2E:
         page = browser.new_page()
 
         page.goto(f"{E2E_BASE_URL}/manage/login")
-        page.fill("input[name='api_key']", E2E_API_KEY)
+        page.fill("input[name='headroomgate_key']", E2E_API_KEY)
         page.click("button[type='submit']")
 
         # Navigate to usage

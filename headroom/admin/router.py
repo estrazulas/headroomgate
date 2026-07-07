@@ -268,11 +268,11 @@ async def login_page(
 
 @router.post("/login")
 async def login(
-    api_key: str = Form(...),
+    headroomgate_key: str = Form(...),
 ) -> Response:
     """Validate hr_* key, create session, set httpOnly cookie."""
     store = _get_auth()
-    identity = store.resolve_key_identity(api_key)
+    identity = store.resolve_key_identity(headroomgate_key)
     if identity is None:
         return HTMLResponse(
             _render(

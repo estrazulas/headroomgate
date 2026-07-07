@@ -16,7 +16,7 @@
                 <h1 class="text-3xl font-bold tracking-tight">
                     Headroom <span class="text-indigo-500">Admin</span>
                 </h1>
-                <p class="text-gray-500 dark:text-gray-400 mt-2">Sign in with your API key</p>
+                <p class="text-gray-500 dark:text-gray-400 mt-2">Sign in with your HeadroomGate key</p>
             </div>
 
             {% if error %}
@@ -27,22 +27,42 @@
 
             <form action="/manage/login" method="post" class="space-y-5">
                 <div>
-                    <label for="api_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                        API Key
+                    <label for="headroomgate_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        HeadroomGate Key
                     </label>
                     <input
                         type="password"
-                        name="api_key"
-                        id="api_key"
+                        name="headroomgate_key"
+                        id="headroomgate_key"
                         placeholder="hr_..."
                         required
                         autofocus
                         class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                     />
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
-                        Use an <code class="text-indigo-500">hr_*</code> API key from an admin or team_lead account.
+                        Keys start with <code class="text-indigo-500">hr_</code> — not your LLM provider key.
+                        Ask an admin or use <code class="text-indigo-500">headroom auth create-key</code>.
                     </p>
                 </div>
+
+                <!-- First-time setup help -->
+                <details class="text-xs text-gray-500 dark:text-gray-400">
+                    <summary class="cursor-pointer hover:text-indigo-500 font-medium">First time? Generate an admin key</summary>
+                    <div class="mt-3 space-y-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                        <p class="font-medium text-gray-700 dark:text-gray-300">Option A — Manual CLI (server terminal):</p>
+                        <pre class="text-xs font-mono bg-gray-100 dark:bg-gray-950 p-3 rounded overflow-x-auto leading-relaxed">headroom auth init-db \
+  && headroom auth create-user admin --role admin --team ops \
+  && headroom auth create-key admin</pre>
+                        <p class="text-gray-500 dark:text-gray-400">Initializes the DB, creates an admin user, and prints an <code class="text-indigo-500">hr_</code> key.</p>
+
+                        <p class="font-medium text-gray-700 dark:text-gray-300 pt-2 border-t border-gray-200 dark:border-gray-700">Option B — Automated installer:</p>
+                        <pre class="text-xs font-mono bg-gray-100 dark:bg-gray-950 p-3 rounded overflow-x-auto leading-relaxed">git clone https://github.com/estrazulas/deepclaude_with_headroom.git \
+  && cd deepclaude_with_headroom \
+  && bash install.sh</pre>
+                        <p class="text-gray-500 dark:text-gray-400">Runs an interactive wizard that installs the proxy, initializes auth, and generates the first admin key automatically. See <a href="https://github.com/estrazulas/deepclaude_with_headroom#-headroomgate--auth--audit-recommended-for-teams" class="text-indigo-500 hover:underline" target="_blank">install docs →</a></p>
+                    </div>
+                </details>
+
                 <button
                     type="submit"
                     class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
