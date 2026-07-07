@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block content %}
+<div x-data="usersApp()" x-init="init()" class="space-y-6">
+    <!-- Controls row -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-3">
+            <input type="text" x-model="search" placeholder="Filter users..." class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+            <select x-model="roleFilter" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="">All roles</option>
+                <option value="admin">Admin</option>
+                <option value="team_lead">Team Lead</option>
+                <option value="developer">Developer</option>
+                <option value="viewer">Viewer</option>
+            </select>
+            <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" x-model="showInactive" class="rounded border-gray-300 dark:border-gray-600">
+                Show inactive
+            </label>
+        </div>
+        {% if user_role == 'admin' or user_role == 'team_lead' %}
+        <button @click="openCreate()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition-colors">+ New User</button>
+        {% endif %}
+    </div>
+
+    <!-- Users table -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50 dark:bg-gray-900 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <th class="px-6 py-3">Username</th>
+                        <th class="px-6 py-3">Role</th>
+                        <th class="px-6 py-3">Team</th>
+                        <th class="px-6 py-3">Keys</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3">Created</th>
+                        <th class="px-6 py-3"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700" id="users-tbody">
+                    <template x-for="u in filteredUsers" :key="u.user_id">
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors" :class="{'opacity-60': !u.is_active}">
+                            <td class="px-6 py-4 text-sm font-medium" x-text="u.username"></td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                      :class="{'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400': u.role === 'admin',
+                                               'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400': u.role === 'team_lead',
+                                               'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': u.role === 'developer',
+                                               'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400': u.role === 'viewer'}"
+                                ><span x-text="u.role"></span></span>
+                            </td>
+                            <td class="px-6 py-4 text-sm" x-text="u.team"></td>
+                            <td class="px-6 py-4 text-sm" x-text="u.key_count"></td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center gap-1.5" :class="u.is_active ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                                    <span class="w-2 h-2 rounded-full" :class="u.is_active ? 'bg-green-500' : 'bg-red-500'"></span>
+                                    <span class="text-sm" x-text="u.is_active ? 'Active' : 'Inactive'"></span>
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="u.created_at ? new Date(u.created_at).toLocaleDateString() : ''"></td>
+                            <td class="px-6 py-4 text-right">
+                                {% if user_role == 'admin' or user_role == 'team_lead' %}
+                                <button @click="toggleStatus(u)" class="text-sm font-medium"
+                                        :class="u.is_active ? 'text-red-600 hover:text-red-800 dark:text-red-400' : 'text-green-600 hover:text-green-800 dark:text-green-400'"
+                                ><span x-text="u.is_active ? 'Deactivate' : 'Activate'"></span></button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="filteredUsers.length === 0">
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <p class="text-lg font-medium mb-1">No users found</p>
+                            <p class="text-sm">Create a user to get started.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Create user modal -->
+    <div x-show="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" x-cloak @click.away="showCreateModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md mx-4 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold mb-4">Create User</h3>
+            <form @submit.prevent="createUser()" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Username</label>
+                    <input type="text" x-model="form.username" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Role</label>
+                    <select x-model="form.role" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="developer">Developer</option>
+                        <option value="team_lead">Team Lead</option>
+                        <option value="viewer">Viewer</option>
+                        {% if user_role == 'admin' %}
+                        <option value="admin">Admin</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Team</label>
+                    <input type="text" x-model="form.team" required
+                           {% if user_role == 'team_lead' %}disabled{% endif %}
+                           placeholder="{% if user_role == 'team_lead' %}{{ user_team }}{% else %}e.g. backend{% endif %}"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none disabled:opacity-50">
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function usersApp() {
+        return {
+            users: [],
+            search: '',
+            roleFilter: '',
+            showInactive: false,
+            showCreateModal: false,
+            form: { username: '', role: 'developer', team: '' },
+            async init() {
+                await this.loadUsers();
+            },
+            async loadUsers() {
+                try {
+                    const resp = await fetch('/manage/api/users');
+                    this.users = await resp.json();
+                } catch(e) { console.error('Failed to load users', e); }
+            },
+            get filteredUsers() {
+                return this.users.filter(u => {
+                    if (this.search && !u.username.toLowerCase().includes(this.search.toLowerCase())) return false;
+                    if (this.roleFilter && u.role !== this.roleFilter) return false;
+                    if (!this.showInactive && !u.is_active) return false;
+                    {% if user_role == 'team_lead' %}
+                    if (u.team !== '{{ user_team }}') return false;
+                    {% endif %}
+                    return true;
+                });
+            },
+            openCreate() {
+                this.form = { username: '', role: 'developer', team: '{{ user_team if user_role == 'team_lead' else '' }}' };
+                this.showCreateModal = true;
+            },
+            async createUser() {
+                try {
+                    const resp = await fetch('/manage/api/users', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(this.form)
+                    });
+                    if (!resp.ok) {
+                        const err = await resp.json();
+                        alert(err.detail || 'Failed to create user');
+                        return;
+                    }
+                    this.showCreateModal = false;
+                    await this.loadUsers();
+                } catch(e) { alert('Failed to create user'); }
+            },
+            async toggleStatus(u) {
+                if (!confirm(`${u.is_active ? 'Deactivate' : 'Activate'} user "${u.username}"?`)) return;
+                try {
+                    const resp = await fetch(`/manage/api/users/${u.username}/status`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ is_active: !u.is_active })
+                    });
+                    if (!resp.ok) {
+                        const err = await resp.json();
+                        alert(err.detail || 'Failed to update status');
+                        return;
+                    }
+                    await this.loadUsers();
+                } catch(e) { alert('Failed to update status'); }
+            }
+        }
+    }
+</script>
+{% endblock %}

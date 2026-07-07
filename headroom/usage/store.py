@@ -244,6 +244,7 @@ class AuditStore:
         user_id: str,
         since: datetime | None = None,
         limit: int = 25,
+        offset: int = 0,
         team: str | None = None,
     ) -> list[dict[str, Any]]:
         """Return individual request history for *user_id*, most recent first.
@@ -252,6 +253,7 @@ class AuditStore:
             user_id: The user whose history to fetch.
             since: Optional UTC datetime filter (requests after this time).
             limit: Max entries to return (clamped 1-100 by caller).
+            offset: Number of records to skip (for pagination).
             team: Optional team filter for team-lead access scope.
         """
         cypher = """
@@ -265,19 +267,53 @@ class AuditStore:
                    r.model AS model,
                    r.input_tokens AS input_tokens,
                    r.output_tokens AS output_tokens,
+                   r.tokens_saved AS tokens_saved,
                    r.latency_ms AS latency_ms,
                    r.summary AS summary
             ORDER BY r.timestamp DESC
+            SKIP $offset
             LIMIT $limit
             """
         params: dict[str, Any] = {
             "user_id": user_id,
             "since": since.isoformat() if since else None,
             "limit": limit,
+            "offset": offset,
         }
         if team:
             params["team"] = team
-        return self._run(cypher, params)
+        rows = self._run(cypher, params)
+        # Convert Neo4j DateTime → ISO string so FastAPI can serialize it
+        for row in rows:
+            ts = row.get("timestamp")
+            if ts is not None:
+                row["timestamp"] = ts.isoformat()
+        return rows
+
+    def get_user_history_count(
+        self,
+        user_id: str,
+        since: datetime | None = None,
+        team: str | None = None,
+    ) -> int:
+        """Return total count of request log entries for *user_id*."""
+        cypher = """
+            MATCH (r:RequestLog {user_id: $user_id})
+            WHERE $since IS NULL OR r.timestamp >= datetime($since)
+            """
+        if team:
+            cypher += " AND r.team = $team"
+        cypher += """
+            RETURN COUNT(r) AS total
+            """
+        params: dict[str, Any] = {
+            "user_id": user_id,
+            "since": since.isoformat() if since else None,
+        }
+        if team:
+            params["team"] = team
+        rows = self._run(cypher, params)
+        return rows[0]["total"] if rows else 0
 
     # ------------------------------------------------------------------
     # purge

@@ -271,3 +271,4 @@ dummy/
 # OpenSpec — docs moved to docs_sdd; keep commands local only
 .github/skills/openspec-*/
 .github/prompts/opsx-*
+openspec/

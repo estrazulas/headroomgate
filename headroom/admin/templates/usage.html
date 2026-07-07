@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+{% block content %}
+<div x-data="usageApp()" x-init="init()" class="space-y-6">
+    <!-- Time window selector -->
+    <div class="flex items-center gap-2">
+        <button @click="setWindow('24h')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                :class="timeWindow === '24h' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'">24h</button>
+        <button @click="setWindow('7d')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                :class="timeWindow === '7d' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'">7d</button>
+        <button @click="setWindow('30d')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                :class="timeWindow === '30d' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'">30d</button>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Requests</p>
+            <p class="text-2xl font-bold" x-text="summary.total_requests.toLocaleString()"></p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Tokens In</p>
+            <p class="text-2xl font-bold" x-text="summary.total_tokens_in.toLocaleString()"></p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Tokens Saved</p>
+            <p class="text-2xl font-bold text-green-500" x-text="summary.total_tokens_saved.toLocaleString()"></p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Active Users</p>
+            <p class="text-2xl font-bold" x-text="summary.active_users.toLocaleString()"></p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Cost Saved</p>
+            <p class="text-2xl font-bold text-emerald-500" x-text="`$${summary.cost_saved_usd.toFixed(2)}`"></p>
+        </div>
+    </div>
+
+    <!-- Top consumers chart -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+        <h3 class="font-semibold mb-4">Top Consumers</h3>
+        <div x-show="topConsumers.length === 0" class="py-8 text-center text-gray-500 dark:text-gray-400">
+            <p>No usage data yet for this period.</p>
+        </div>
+        <div x-show="topConsumers.length > 0" class="space-y-2">
+            <template x-for="(c, i) in topConsumers" :key="i">
+                <div class="flex items-center gap-4">
+                    <span class="text-sm font-medium text-gray-500 w-6" x-text="`#${i + 1}`"></span>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-sm font-medium" x-text="c.username || c.user_id"></span>
+                            <span class="text-sm text-gray-500" x-text="`${c.tokens_in.toLocaleString()} tokens`"></span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div class="bg-indigo-500 h-2 rounded-full transition-all duration-500"
+                                 :style="`width: ${(c.tokens_in / maxTokens * 100).toFixed(1)}%`"></div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- User drill-down -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+        <h3 class="font-semibold mb-4">User History</h3>
+        <div class="flex items-center gap-3 mb-4">
+            <input type="text" x-model="drilldownUser" placeholder="Username or user_id (e.g. admin)" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none flex-1">
+            <button @click="loadSessions(0)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">Load</button>
+        </div>
+        <div x-show="sessions.length === 0 && drilldownUser" class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+            No sessions found for this user.
+        </div>
+        <div x-show="sessions.length > 0" class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50 dark:bg-gray-900 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <th class="px-4 py-2">Time</th>
+                        <th class="px-4 py-2">Model</th>
+                        <th class="px-4 py-2">Tokens In</th>
+                        <th class="px-4 py-2">Tokens Out</th>
+                        <th class="px-4 py-2">Tokens Saved</th>
+                        <th class="px-4 py-2">Cost Saved</th>
+                        <th class="px-4 py-2">Latency</th>
+                        <th class="px-4 py-2">Summary</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    <template x-for="s in sessions" :key="s.timestamp">
+                        <tr class="text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors" @click="openDetail(s)">
+                            <td class="px-4 py-2 text-gray-500" x-text="new Date(s.timestamp).toLocaleString()"></td>
+                            <td class="px-4 py-2 font-mono text-xs" x-text="s.model"></td>
+                            <td class="px-4 py-2" x-text="s.input_tokens?.toLocaleString()"></td>
+                            <td class="px-4 py-2" x-text="s.output_tokens?.toLocaleString()"></td>
+                            <td class="px-4 py-2 text-green-600 dark:text-green-400" x-text="s.tokens_saved ? s.tokens_saved.toLocaleString() : '0'"></td>
+                            <td class="px-4 py-2 text-emerald-600 dark:text-emerald-400" x-text="s.cost_saved_usd ? `$${s.cost_saved_usd}` : '$0'"></td>
+                            <td class="px-4 py-2" x-text="s.latency_ms ? `${s.latency_ms}ms` : '—'"></td>
+                            <td class="px-4 py-2 max-w-xs truncate text-gray-500 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                                @click.stop="openSummary(s.summary)"
+                                x-text="s.summary || '—'"
+                                :title="s.summary || ''"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <!-- Pagination -->
+            <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+                <span class="text-sm text-gray-500 dark:text-gray-400" x-text="`Showing ${sessions.length ? sessionsOffset + 1 : 0}–${Math.min(sessionsOffset + sessions.length, sessionsTotal)} of ${sessionsTotal}`"></span>
+                <div class="flex items-center gap-2">
+                    <button @click="loadSessions(sessionsOffset - sessionsPageSize)" :disabled="sessionsOffset <= 0"
+                            class="px-3 py-1 text-sm rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            :class="sessionsOffset > 0 ? 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'">
+                        ← Prev
+                    </button>
+                    <button @click="loadSessions(sessionsOffset + sessionsPageSize)" :disabled="sessionsOffset + sessionsPageSize >= sessionsTotal"
+                            class="px-3 py-1 text-sm rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            :class="sessionsOffset + sessionsPageSize < sessionsTotal ? 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'">
+                        Next →
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Semantic search -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+        <h3 class="font-semibold mb-4">Search Requests</h3>
+        <div class="flex items-center gap-3 mb-4">
+            <input type="text" x-model="searchQuery" @keydown.enter="doSearch(0)" placeholder="Search request summaries..." class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none flex-1">
+            <select x-model="searchUsername" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="">All users</option>
+                <template x-for="u in users" :key="u.user_id">
+                    <option :value="u.username" x-text="u.username"></option>
+                </template>
+            </select>
+            <button @click="doSearch(0)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">Search</button>
+        </div>
+        <div x-show="searchResults.length === 0 && searchQuery" class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+            No results found.
+        </div>
+        <div x-show="searchResults.length > 0" class="space-y-3">
+            <template x-for="r in searchResults" :key="r.request_id || r.id">
+                <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" @click="openDetail(r)">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-medium" x-text="r.username"></span>
+                        <span class="text-xs text-gray-500" x-text="`Score: ${(r.score * 100).toFixed(0)}%`"></span>
+                    </div>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 line-clamp-2" x-text="r.summary"></p>
+                    <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                        <span x-text="r.model"></span>
+                        <span x-text="r.timestamp ? new Date(r.timestamp).toLocaleString() : ''"></span>
+                    </div>
+                </div>
+            </template>
+            <!-- Pagination -->
+            <div class="flex items-center justify-between pt-2">
+                <span class="text-sm text-gray-500 dark:text-gray-400" x-text="searchTotal > 0 ? `Showing ${searchOffset + 1}–${Math.min(searchOffset + searchResults.length, searchTotal)} of ${searchTotal}` : ''"></span>
+                <div class="flex items-center gap-2">
+                    <button @click="doSearch(searchOffset - searchPageSize)" :disabled="searchOffset <= 0"
+                            class="px-3 py-1 text-sm rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            :class="searchOffset > 0 ? 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'">
+                        ← Prev
+                    </button>
+                    <button @click="doSearch(searchOffset + searchPageSize)" :disabled="searchOffset + searchPageSize >= searchTotal"
+                            class="px-3 py-1 text-sm rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            :class="searchOffset + searchPageSize < searchTotal ? 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'">
+                        Next →
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail modal (shared between history and search) -->
+    <div x-show="showDetailModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" x-cloak @click.away="showDetailModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl mx-4 border border-gray-200 dark:border-gray-700 max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                <h3 class="font-semibold text-lg">Request Details</h3>
+                <button @click="showDetailModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none">&times;</button>
+            </div>
+            <div class="px-6 py-4 overflow-y-auto space-y-3 text-sm">
+                <template x-for="(v, k) in detailFields" :key="k">
+                    <div class="flex items-start gap-3">
+                        <span class="font-medium text-gray-500 dark:text-gray-400 w-28 flex-shrink-0 text-xs uppercase tracking-wider" x-text="k"></span>
+                        <span class="text-gray-700 dark:text-gray-300 break-words" x-text="v"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function usageApp() {
+        return {
+            timeWindow: '7d',
+            summary: { total_requests: 0, total_tokens_in: 0, total_tokens_out: 0, total_tokens_saved: 0, cost_saved_usd: 0, active_users: 0 },
+            topConsumers: [],
+            drilldownUser: '',
+            sessions: [],
+            sessionsOffset: 0,
+            sessionsPageSize: 25,
+            sessionsTotal: 0,
+            showSummaryModal: false,
+            selectedSummary: '',
+            searchQuery: '',
+            searchUsername: '',
+            searchResults: [],
+            searchOffset: 0,
+            searchPageSize: 10,
+            searchTotal: 0,
+            users: [],
+            showDetailModal: false,
+            detailFields: {},
+            async init() {
+                await this.loadSummary();
+                await this.loadTop();
+                await this.loadUsers();
+            },
+            async loadUsers() {
+                try {
+                    const resp = await fetch('/manage/api/users');
+                    this.users = await resp.json();
+                } catch(e) { console.error('Failed to load users', e); }
+            },
+            async setWindow(w) {
+                this.timeWindow = w;
+                await this.loadSummary();
+                await this.loadTop();
+            },
+            async loadSummary() {
+                try {
+                    const resp = await fetch(`/manage/api/usage/summary?since=${this.timeWindow}`);
+                    const data = await resp.json();
+                    if (data) Object.assign(this.summary, data);
+                } catch(e) { console.error('Failed to load summary', e); }
+            },
+            async loadTop() {
+                try {
+                    const resp = await fetch(`/manage/api/usage/top?since=${this.timeWindow}&limit=10`);
+                    this.topConsumers = await resp.json();
+                } catch(e) { console.error('Failed to load top consumers', e); }
+            },
+            get maxTokens() {
+                if (!this.topConsumers.length) return 1;
+                return Math.max(...this.topConsumers.map(c => c.tokens_in || 0));
+            },
+            async loadSessions(offset) {
+                const input = this.drilldownUser.trim();
+                if (!input) return;
+                if (offset === undefined) offset = 0;
+                this.sessionsOffset = offset;
+                try {
+                    const resp = await fetch(`/manage/api/usage/users/${encodeURIComponent(input)}/sessions?since=${this.timeWindow}&limit=${this.sessionsPageSize}&offset=${offset}`);
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({}));
+                        alert(err.detail || `Failed to load sessions for "${input}"`);
+                        return;
+                    }
+                    const data = await resp.json();
+                    this.sessions = data.sessions || [];
+                    this.sessionsTotal = data.total || 0;
+                } catch(e) { console.error('Failed to load sessions', e); }
+            },
+            openSummary(summary) {
+                this.selectedSummary = summary || '(empty)';
+                this.showSummaryModal = true;
+            },
+            openDetail(item) {
+                const fields = {};
+                for (const [k, v] of Object.entries(item)) {
+                    if (k === 'score') continue;
+                    let val = v;
+                    if (k === 'timestamp' && v) {
+                        val = new Date(v).toLocaleString();
+                    } else if (k === 'input_tokens' || k === 'output_tokens' || k === 'tokens_saved') {
+                        val = v != null ? v.toLocaleString() : '—';
+                    } else if (k === 'latency_ms' && v != null) {
+                        val = `${v}ms`;
+                    } else if (k === 'cost_saved_usd' && v != null) {
+                        val = `$${v}`;
+                    } else if (v === null || v === undefined) {
+                        val = '—';
+                    }
+                    fields[k === 'cost_saved_usd' ? 'cost saved' : k.replace(/_/g, ' ')] = val;
+                }
+                this.detailFields = fields;
+                this.showDetailModal = true;
+            },
+            async doSearch(offset) {
+                if (!this.searchQuery.trim()) return;
+                if (offset === undefined) offset = 0;
+                this.searchOffset = offset;
+                try {
+                    let url = `/manage/api/usage/search?q=${encodeURIComponent(this.searchQuery)}&since=${this.timeWindow}&limit=${this.searchPageSize}&offset=${offset}`;
+                    if (this.searchUsername) url += `&username=${encodeURIComponent(this.searchUsername)}`;
+                    const resp = await fetch(url);
+                    const data = await resp.json();
+                    this.searchResults = data.results || [];
+                    this.searchTotal = data.total || 0;
+                } catch(e) { console.error('Search failed', e); }
+            }
+        }
+    }
+</script>
+{% endblock %}

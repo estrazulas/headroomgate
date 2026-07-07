@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} — Headroom Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js" defer></script>
+    <script>
+        (function() {
+            const saved = localStorage.getItem('headroom-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (saved === 'light' || (!saved && !prefersDark)) {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: {} }
+        }
+    </script>
+    <style>
+        .flash-success { animation: flash-green 2s ease-out; }
+        .flash-error { animation: flash-red 2s ease-out; }
+        @keyframes flash-green { 0% { background-color: rgb(22 163 74 / 0.3); } 100% { background-color: transparent; } }
+        @keyframes flash-red { 0% { background-color: rgb(220 38 38 / 0.3); } 100% { background-color: transparent; } }
+        .sidebar-link { @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors; }
+        .sidebar-link:hover { @apply bg-gray-700/50 text-white; }
+        .sidebar-link.active { background-color: rgba(5, 150, 105, 0.25); color: #a7f3d0; }
+        .sidebar-link.active svg { stroke: #a7f3d0; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100" x-data="{ sidebarOpen: true }">
+    <div class="flex h-screen overflow-hidden">
+        {% if user_role not in ('developer', 'viewer') %}
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-800 dark:bg-gray-950 border-r border-gray-700 flex flex-col flex-shrink-0" :class="sidebarOpen ? 'block' : 'hidden'">
+            <div class="p-4 border-b border-gray-700">
+                <h1 class="text-lg font-bold text-white tracking-tight">Headroom <span class="text-indigo-400">Admin</span></h1>
+            </div>
+            <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+                <a href="/manage/users" class="sidebar-link {{ 'active' if active_nav == 'users' else 'text-gray-300' }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/></svg>
+                    Users
+                </a>
+                {% if user_role == 'admin' %}
+                <a href="/manage/teams" class="sidebar-link {{ 'active' if active_nav == 'teams' else 'text-gray-300' }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Teams
+                </a>
+                {% endif %}
+                <a href="/manage/keys" class="sidebar-link {{ 'active' if active_nav == 'keys' else 'text-gray-300' }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>
+                    API Keys
+                </a>
+                <a href="/manage/usage" class="sidebar-link {{ 'active' if active_nav == 'usage' else 'text-gray-300' }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+                    Usage
+                </a>
+            </nav>
+            <!-- User info footer -->
+            <div class="p-3 border-t border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-bold">
+                        {{ username[:1]|upper }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-white truncate">{{ username }}</p>
+                        <p class="text-xs text-gray-400">{{ role }}</p>
+                    </div>
+                    <form action="/manage/logout" method="post">
+                        <button type="submit" class="text-gray-400 hover:text-white transition-colors" title="Logout">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </aside>
+        {% endif %}
+
+        <!-- Main content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header bar -->
+            <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    {% if user_role not in ('developer', 'viewer') %}
+                    <button @click="sidebarOpen = !sidebarOpen" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+                    </button>
+                    {% endif %}
+                    <h2 class="text-xl font-semibold">{{ title }}</h2>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleTheme()" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors" title="Toggle theme">
+                        <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/></svg>
+                        <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg>
+                    </button>
+                    <a href="/dashboard" class="text-sm text-indigo-500 hover:text-indigo-400" target="_blank">Dashboard</a>
+                </div>
+            </header>
+
+            <!-- Page content -->
+            <main class="flex-1 overflow-y-auto p-6">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.classList.contains('dark');
+            if (isDark) {
+                html.classList.remove('dark');
+                localStorage.setItem('headroom-theme', 'light');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('headroom-theme', 'dark');
+            }
+        }
+        // HTMX toasts
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            const target = evt.detail.target;
+            if (target && evt.detail.successful) {
+                target.classList.add('flash-success');
+                setTimeout(() => target.classList.remove('flash-success'), 2000);
+            } else if (target && !evt.detail.successful) {
+                target.classList.add('flash-error');
+                setTimeout(() => target.classList.remove('flash-error'), 2000);
+            }
+        });
+    </script>
+</body>
+</html>

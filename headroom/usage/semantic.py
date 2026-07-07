@@ -189,7 +189,7 @@ class SemanticLogger:
                     )
                 )
 
-            query_filter = Filter(must=must_conditions) if must_conditions else None
+            query_filter = Filter(must=must_conditions) if must_conditions else None  # type: ignore[arg-type]
 
             results = self._client.query_points(
                 collection_name=COLLECTION_NAME,

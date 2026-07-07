@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block content %}
+<div x-data="keysApp()" x-init="init()" class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <input type="text" x-model="search" placeholder="Filter keys..." class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+            <select x-model="statusFilter" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="">All status</option>
+                <option value="active">Active</option>
+                <option value="revoked">Revoked</option>
+            </select>
+        </div>
+        <button @click="openCreate()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition-colors">+ New Key</button>
+    </div>
+
+    <!-- Key list -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50 dark:bg-gray-900 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <th class="px-6 py-3">Prefix</th>
+                        <th class="px-6 py-3">User</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3">Expires</th>
+                        <th class="px-6 py-3">Created</th>
+                        <th class="px-6 py-3"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    <template x-for="k in filteredKeys" :key="k.key_id">
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors" :class="{'opacity-60': !k.is_active}">
+                            <td class="px-6 py-4">
+                                <code class="text-sm font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded" x-text="k.key_prefix"></code>
+                                <span x-show="k.is_active" class="ml-2 text-xs text-gray-400">…</span>
+                            </td>
+                            <td class="px-6 py-4 text-sm" x-text="k.username"></td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                      :class="k.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'">
+                                    <span class="w-1.5 h-1.5 rounded-full" :class="k.is_active ? 'bg-green-500' : 'bg-red-500'"></span>
+                                    <span x-text="k.is_active ? 'Active' : 'Revoked'"></span>
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="k.expires_at ? new Date(k.expires_at).toLocaleDateString() : '—'"></td>
+                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="k.created_at ? new Date(k.created_at).toLocaleDateString() : ''"></td>
+                            <td class="px-6 py-4 text-right">
+                                <button x-show="k.is_active" @click="revokeKey(k)" class="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400">Revoke</button>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="filteredKeys.length === 0">
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <p class="text-lg font-medium mb-1">No API keys found</p>
+                            <p class="text-sm">Generate a key for a developer to get started.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Create key modal -->
+    <div x-show="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" x-cloak @click.away="showCreateModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-lg mx-4 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold mb-4">Generate API Key</h3>
+
+            <!-- Form -->
+            <form x-show="!createdKey" @submit.prevent="createKey()" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">User</label>
+                    <input type="text" x-model="keyForm.username" required placeholder="username" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">TTL (days)</label>
+                    <input type="number" x-model="keyForm.ttl_days" min="1" max="365" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">Generate</button>
+                </div>
+            </form>
+
+            <!-- Created key (show once) -->
+            <div x-show="createdKey" class="space-y-4">
+                <div class="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">⚠️ Copy this key now — it will not be shown again.</p>
+                </div>
+                <div class="relative">
+                    <pre class="p-4 bg-gray-100 dark:bg-gray-900 rounded-lg text-sm font-mono break-all" x-text="createdKey"></pre>
+                    <button @click="copyKey()" class="absolute top-2 right-2 p-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" title="Copy to clipboard">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    </button>
+                </div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                    <p><strong>Key ID:</strong> <span x-text="createdKeyId" class="font-mono"></span></p>
+                    <p><strong>Expires:</strong> <span x-text="createdKeyExpires"></span></p>
+                </div>
+                <div class="flex justify-end">
+                    <button @click="showCreateModal = false; createdKey = null" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function keysApp() {
+        return {
+            keys: [],
+            search: '',
+            statusFilter: '',
+            showCreateModal: false,
+            keyForm: { username: '', ttl_days: 90 },
+            createdKey: null,
+            createdKeyId: '',
+            createdKeyExpires: '',
+            async init() {
+                await this.loadKeys();
+            },
+            async loadKeys() {
+                try {
+                    const resp = await fetch('/manage/api/keys');
+                    this.keys = await resp.json();
+                } catch(e) { console.error('Failed to load keys', e); }
+            },
+            get filteredKeys() {
+                return this.keys.filter(k => {
+                    if (this.search && !k.username?.toLowerCase().includes(this.search.toLowerCase()) && !k.key_prefix?.toLowerCase().includes(this.search.toLowerCase())) return false;
+                    if (this.statusFilter === 'active' && !k.is_active) return false;
+                    if (this.statusFilter === 'revoked' && k.is_active) return false;
+                    return true;
+                });
+            },
+            openCreate() {
+                this.keyForm = { username: '', ttl_days: 90 };
+                this.createdKey = null;
+                this.showCreateModal = true;
+            },
+            async createKey() {
+                try {
+                    const resp = await fetch('/manage/api/keys', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(this.keyForm)
+                    });
+                    if (!resp.ok) {
+                        const err = await resp.json();
+                        alert(err.detail || 'Failed to create key');
+                        return;
+                    }
+                    const data = await resp.json();
+                    this.createdKey = data.raw_key;
+                    this.createdKeyId = data.key_id;
+                    this.createdKeyExpires = new Date(data.expires_at).toLocaleString();
+                    await this.loadKeys();
+                } catch(e) { alert('Failed to create key'); }
+            },
+            copyKey() {
+                navigator.clipboard.writeText(this.createdKey).then(() => {
+                    // Brief visual feedback
+                }).catch(() => {});
+            },
+            async revokeKey(k) {
+                if (!confirm(`Revoke key ${k.key_prefix}… (owned by ${k.username})?`)) return;
+                try {
+                    const resp = await fetch(`/manage/api/keys/${k.key_id}`, { method: 'DELETE' });
+                    if (!resp.ok) {
+                        const err = await resp.json();
+                        alert(err.detail || 'Failed to revoke key');
+                        return;
+                    }
+                    await this.loadKeys();
+                } catch(e) { alert('Failed to revoke key'); }
+            }
+        }
+    }
+</script>
+{% endblock %}

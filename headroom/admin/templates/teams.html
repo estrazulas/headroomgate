@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block content %}
+<div x-data="teamsApp()" x-init="init()" class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold">All Teams</h3>
+        <button @click="showCreateModal = true" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition-colors">+ New Team</button>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <template x-for="t in teams" :key="t.name">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold text-lg" x-text="t.name"></h4>
+                    <span class="text-sm text-gray-500 dark:text-gray-400" x-text="`${t.members} members`"></span>
+                </div>
+                <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <span class="inline-flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                        <span x-text="`${t.active_members} active`"></span>
+                    </span>
+                </div>
+                <div class="mt-4">
+                    <button @click="openAddUser(t.name)" class="text-sm text-indigo-500 hover:text-indigo-400 font-medium">+ Add User</button>
+                </div>
+            </div>
+        </template>
+        <template x-if="teams.length === 0">
+            <div class="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
+                <p class="text-lg font-medium mb-1">No teams yet</p>
+                <p class="text-sm">Create your first team.</p>
+            </div>
+        </template>
+    </div>
+
+    <!-- Create team modal -->
+    <div x-show="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" x-cloak @click.away="showCreateModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md mx-4 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold mb-4">Create Team</h3>
+            <form @submit.prevent="createTeam()" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Team Name</label>
+                    <input type="text" x-model="teamForm.name" required placeholder="e.g. backend" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add user modal -->
+    <div x-show="showAddUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" x-cloak @click.away="showAddUserModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md mx-4 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold mb-4">Add User to <span x-text="addUserTeam"></span></h3>
+            <form @submit.prevent="addUser()" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Username</label>
+                    <input type="text" x-model="addUserForm.username" required placeholder="username" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="showAddUserModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function teamsApp() {
+        return {
+            teams: [],
+            showCreateModal: false,
+            showAddUserModal: false,
+            teamForm: { name: '' },
+            addUserTeam: '',
+            addUserForm: { username: '' },
+            async init() {
+                await this.loadTeams();
+            },
+            async loadTeams() {
+                try {
+                    const resp = await fetch('/manage/api/teams');
+                    this.teams = await resp.json();
+                } catch(e) { console.error('Failed to load teams', e); }
+            },
+            async createTeam() {
+                try {
+                    const resp = await fetch('/manage/api/teams', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(this.teamForm)
+                    });
+                    if (!resp.ok) {
+                        const err = await resp.json();
+                        alert(err.detail || 'Failed to create team');
+                        return;
+                    }
+                    this.showCreateModal = false;
+                    this.teamForm = { name: '' };
+                    await this.loadTeams();
+                } catch(e) { alert('Failed to create team'); }
+            },
+            openAddUser(team) {
+                this.addUserTeam = team;
+                this.addUserForm = { username: '' };
+                this.showAddUserModal = true;
+            },
+            async addUser() {
+                try {
+                    const resp = await fetch(`/manage/api/teams/${this.addUserTeam}/users`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(this.addUserForm)
+                    });
+                    if (!resp.ok) {
+                        const err = await resp.json();
+                        alert(err.detail || 'Failed to add user');
+                        return;
+                    }
+                    this.showAddUserModal = false;
+                    await this.loadTeams();
+                } catch(e) { alert('Failed to add user'); }
+            }
+        }
+    }
+</script>
+{% endblock %}

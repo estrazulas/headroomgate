@@ -62,6 +62,8 @@ except ImportError:
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from headroom._version import __version__
+from headroom.admin.router import init_admin as init_admin_stores
+from headroom.admin.router import router as admin_router
 from headroom.agent_savings import proxy_pipeline_kwargs
 from headroom.cache.compression_feedback import get_compression_feedback
 from headroom.cache.compression_store import format_retrieval_miss_detail, get_compression_store
@@ -2081,6 +2083,7 @@ def create_app(config: ProxyConfig | None = None) -> FastAPI:
                 if _cc_reconciler is not None and _beacon_is_owner[0]:
                     await _cc_reconciler.start()
 
+                await init_admin_stores(anthropic_api_url=HeadroomProxy.ANTHROPIC_API_URL)
                 app.state.ready = True
                 yield
             except Exception as exc:
@@ -2109,7 +2112,10 @@ def create_app(config: ProxyConfig | None = None) -> FastAPI:
                 await stop_audit_logger()
             except Exception:
                 logger.debug("audit logger stop skipped", exc_info=True)
+            from headroom.admin.router import shutdown_admin as shutdown_admin_stores
+
             await proxy.shutdown()
+            shutdown_admin_stores()
             shutdown_headroom_tracing()
             shutdown_otel_metrics()
 
@@ -2562,6 +2568,7 @@ def create_app(config: ProxyConfig | None = None) -> FastAPI:
     # Health/readiness probes must stay reachable without a token so
     # orchestrators can check a container that binds non-loopback.
     _AUTH_EXEMPT_PATHS = frozenset({"/health", "/healthz", "/livez", "/readyz"})
+    _AUTH_EXEMPT_PREFIXES = ("/manage",)
 
     # Loud warning when a non-loopback bind has no token configured: that is the
     # exact shape (e.g. the Docker 0.0.0.0 image) that exposes unauthenticated
@@ -2601,7 +2608,11 @@ def create_app(config: ProxyConfig | None = None) -> FastAPI:
             path = request.url.path
             client = getattr(request, "client", None)
             client_host = getattr(client, "host", None) if client is not None else None
-            if path not in _AUTH_EXEMPT_PATHS and not is_loopback_host(client_host):
+            if (
+                path not in _AUTH_EXEMPT_PATHS
+                and not path.startswith(_AUTH_EXEMPT_PREFIXES)
+                and not is_loopback_host(client_host)
+            ):
                 provided = _extract_proxy_token(request.headers)
                 if provided is None or not hmac.compare_digest(
                     provided.encode("utf-8", "replace"), _proxy_token_bytes
@@ -4048,6 +4059,7 @@ def create_app(config: ProxyConfig | None = None) -> FastAPI:
     async def compress_messages(request: Request):
         return await proxy.handle_compress(request)
 
+    app.include_router(admin_router, prefix="/manage")
     register_provider_routes(app, proxy)
 
     return app

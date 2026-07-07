@@ -34,6 +34,16 @@ _AUTH_BYPASS_PATHS: frozenset[str] = frozenset(
 )
 
 
+def _should_bypass(path: str) -> bool:
+    """Return True when ``path`` should skip auth middleware."""
+    if path in _AUTH_BYPASS_PATHS:
+        return True
+    # Admin interface uses its own session-based auth
+    if path.startswith("/manage"):
+        return True
+    return False
+
+
 def _json_response(status: int, body: dict[str, Any]) -> dict[str, Any]:
     """Build ASGI response start + body messages for a JSON error."""
     payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
@@ -81,8 +91,9 @@ class AuthMiddleware:
 
         path = scope.get("path", "")
 
-        # Health checks and dashboard read-only endpoints never require auth.
-        if path in _AUTH_BYPASS_PATHS:
+        # Health checks, dashboard read-only endpoints, and admin interface
+        # never require auth.
+        if _should_bypass(path):
             await self.app(scope, receive, send)
             return
 
