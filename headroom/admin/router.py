@@ -716,7 +716,7 @@ async def api_usage_search(
         since=since_dt,
         user_id=user_id_filter,
         limit=fetch_limit,
-        min_score=0.6,
+        min_score=0.7,
     )
 
     if user["role"] == "team_lead":
