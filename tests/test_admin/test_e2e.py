@@ -65,6 +65,7 @@ class TestAdminE2E:
 
         # Create team (Enter triggers Alpine @submit.prevent)
         page.click("text=+ New Team")
+        page.wait_for_timeout(300)
         page.fill("input[placeholder='e.g. backend']", test_team)
         page.keyboard.press("Enter")
         # Wait for team to appear
@@ -76,11 +77,16 @@ class TestAdminE2E:
 
         # Create user (Enter triggers Alpine @submit.prevent)
         page.click("text=+ New User")
-        page.wait_for_timeout(300)
-        # Username input (no placeholder), then team input (has placeholder)
+        page.wait_for_timeout(500)
+        # Fill username
         page.locator("div[x-show='showCreateModal'] input[type='text']").first.fill(test_user)
-        page.fill("input[placeholder='e.g. backend']", test_team)
-        page.keyboard.press("Enter")
+        # Fill team via combobox: type, wait for dropdown, pick first match
+        page.locator("input[placeholder='Search or type team name...']").fill(test_team)
+        page.wait_for_timeout(300)
+        page.locator("input[placeholder='Search or type team name...']").press("Enter")
+        page.wait_for_timeout(300)
+        # Click Create button in the modal
+        page.locator("div[x-show='showCreateModal'] button[type='submit']").click()
         # Wait for user in table
         expect(page.locator(f"text={test_user}")).to_be_visible(timeout=5000)
 
@@ -88,10 +94,16 @@ class TestAdminE2E:
         page.click("a[href='/manage/keys']")
         expect(page).to_have_url(re.compile(r"/manage/keys"))
 
-        # Generate key (Enter triggers Alpine @submit.prevent)
+        # Generate key
         page.click("text=+ New Key")
-        page.fill("input[placeholder='username']", test_user)
-        page.keyboard.press("Enter")
+        page.wait_for_timeout(500)
+        # Select user via combobox: type, wait for dropdown, pick first match
+        page.locator("input[placeholder='Search or type username...']").fill(test_user)
+        page.wait_for_timeout(300)
+        page.locator("input[placeholder='Search or type username...']").press("Enter")
+        page.wait_for_timeout(300)
+        # Click Generate button
+        page.locator("div[x-show='showCreateModal'] button[type='submit']").click()
         # The generated key should appear (shown once)
         expect(page.locator("text=⚠️ Copy this key now")).to_be_visible(timeout=5000)
 
@@ -102,9 +114,9 @@ class TestAdminE2E:
         # First key in the list should have a Revoke button
         revoke_button = page.locator("text=Revoke").first
         if revoke_button.is_visible():
-            revoke_button.click()
-            # Accept confirmation dialog
+            # Accept confirmation dialog before clicking (Playwright default dismisses)
             page.once("dialog", lambda dialog: dialog.accept())
+            revoke_button.click()
             expect(page.locator("text=Revoked").first).to_be_visible(timeout=5000)
 
         page.close()

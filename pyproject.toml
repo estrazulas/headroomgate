@@ -463,3 +463,9 @@ exclude_lines = [
     "if __name__ == .__main__.:",
 ]
 
+[dependency-groups]
+dev = [
+    "playwright>=1.61.0",
+    "pytest-playwright>=0.8.0",
+]
+
