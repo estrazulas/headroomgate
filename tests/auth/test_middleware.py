@@ -8,7 +8,7 @@ import pytest
 
 pytest.importorskip("headroom_auth")
 from headroom_auth.cache import AuthCache, CachedIdentity
-from headroom_auth.middleware import _HEALTH_CHECK_PATHS, AuthMiddleware
+from headroom_auth.middleware import _AUTH_BYPASS_PATHS, AuthMiddleware
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -284,10 +284,10 @@ class TestMiddlewareAuth:
     # -- health check paths are correct --
 
     def test_health_check_paths(self) -> None:
-        assert "/livez" in _HEALTH_CHECK_PATHS
-        assert "/readyz" in _HEALTH_CHECK_PATHS
-        assert "/health" in _HEALTH_CHECK_PATHS
-        assert "/metrics" in _HEALTH_CHECK_PATHS
+        assert "/livez" in _AUTH_BYPASS_PATHS
+        assert "/readyz" in _AUTH_BYPASS_PATHS
+        assert "/health" in _AUTH_BYPASS_PATHS
+        assert "/metrics" in _AUTH_BYPASS_PATHS
 
 
 class TestMiddlewareNeo4jFallback:

@@ -19,7 +19,19 @@ from .rate_limiter import rate_limit_error
 log = logging.getLogger("headroom_auth.middleware")
 
 # Endpoints that never require authentication.
-_HEALTH_CHECK_PATHS: frozenset[str] = frozenset({"/livez", "/readyz", "/health", "/metrics"})
+# Dashboard paths expose only read-only aggregate stats — no user content.
+_AUTH_BYPASS_PATHS: frozenset[str] = frozenset(
+    {
+        "/livez",
+        "/readyz",
+        "/health",
+        "/metrics",
+        "/dashboard",
+        "/stats",
+        "/stats-history",
+        "/transformations/feed",
+    }
+)
 
 
 def _json_response(status: int, body: dict[str, Any]) -> dict[str, Any]:
@@ -69,8 +81,8 @@ class AuthMiddleware:
 
         path = scope.get("path", "")
 
-        # Health checks never require auth.
-        if path in _HEALTH_CHECK_PATHS:
+        # Health checks and dashboard read-only endpoints never require auth.
+        if path in _AUTH_BYPASS_PATHS:
             await self.app(scope, receive, send)
             return
 
