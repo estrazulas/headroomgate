@@ -34,12 +34,6 @@
 
 Headroom compresses everything your AI agent reads — tool outputs, logs, RAG chunks, files, and conversation history — before it reaches the LLM. Same answers, fraction of the tokens.
 
-<p align="center">
-  <img src="admin-demo.gif" alt="Headroom Admin Demo" width="100%">
-  <br>
-  <em>Web admin interface — user management, team &amp; key management, usage dashboard with per-user history and semantic search.</em>
-</p>
-
 ## 🚀 Why this fork
 
 Same upstream compression engine, **plus a complete team gateway** built in:
@@ -54,6 +48,12 @@ Same upstream compression engine, **plus a complete team gateway** built in:
 | **Onboard in 2 minutes** | Interactive setup wizard + one-command wrapper for Claude Code |
 
 > Built on [chopratejas/headroom](https://github.com/chopratejas/headroom). All upstream compression features preserved.
+
+<p align="center">
+  <img src="admin-demo.gif" alt="Headroom Admin Demo" width="100%">
+  <br>
+  <em>Manage who uses the proxy — via CLI (<code>headroom auth</code>, <code>headroom usage</code>) or through the web admin interface at <code>/manage</code>.</em>
+</p>
 
 ---
 
