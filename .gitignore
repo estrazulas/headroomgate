@@ -208,6 +208,11 @@ benchmark_results/
 .claude-plugin/
 headroom.db
 headroom_*.db
+
+# Code intelligence tools (local only, never commit)
+graphify-out/
+.codebase-memory/
+.codegraph/
 *.jsonl
 !tests/fixtures/*.jsonl
 docker/differential-network-capture/captures/
@@ -234,6 +239,7 @@ pyrightconfig.json
 
 # Local development configuration
 CLAUDE.md
+AGENTS.md
 
 # Vitals provenance data
 .vitals/
