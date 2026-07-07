@@ -38,6 +38,12 @@ Headroom compresses everything your AI agent reads — tool outputs, logs, RAG c
 
 Same upstream compression engine, **plus a complete team gateway** built in:
 
+<p align="center">
+  <img src="admin-demo.gif" alt="Headroom Admin Demo" width="100%">
+  <br>
+  <em>Manage who uses the proxy — via CLI (<code>headroom auth</code>, <code>headroom usage</code>) or through the web admin interface at <code>/manage</code>.</em>
+</p>
+
 | You want to… | You get |
 |-------------|---------|
 | **Manage who uses the proxy** | Create users, teams, and API keys — revoke access anytime |
@@ -48,12 +54,6 @@ Same upstream compression engine, **plus a complete team gateway** built in:
 | **Onboard in 2 minutes** | Interactive setup wizard + one-command wrapper for Claude Code |
 
 > Built on [chopratejas/headroom](https://github.com/chopratejas/headroom). All upstream compression features preserved.
-
-<p align="center">
-  <img src="admin-demo.gif" alt="Headroom Admin Demo" width="100%">
-  <br>
-  <em>Manage who uses the proxy — via CLI (<code>headroom auth</code>, <code>headroom usage</code>) or through the web admin interface at <code>/manage</code>.</em>
-</p>
 
 ---
 
