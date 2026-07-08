@@ -578,9 +578,9 @@ async def api_list_roles(
     for role in roles:
         try:
             keys = store.list_provider_keys(role["name"])
-            role["provider_count"] = len(keys)
+            role["provider_count"] = len(keys)  # type: ignore[assignment]
         except Exception:
-            role["provider_count"] = 0
+            role["provider_count"] = 0  # type: ignore[assignment]
     return roles
 
 

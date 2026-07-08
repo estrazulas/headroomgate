@@ -3035,3 +3035,38 @@ def reset_tool_search_hint_state() -> None:
     global _tool_search_hint_emitted
     with _tool_search_hint_lock:
         _tool_search_hint_emitted = False
+
+
+def wrap_upstream_auth_401(status_code: int, body: bytes) -> bytes | None:
+    """When the upstream returns 401 with an auth error, wrap it with context.
+
+    The user sees the upstream provider's raw error message (e.g. "Your api
+    key: ****lead is invalid") and mistakes it for their HeadroomGate ``hr_``
+    key.  This function rewrites the response to clarify that the **provider**
+    API key (configured on the role) was rejected, not the caller's own key.
+
+    Returns ``None`` when the response is not a 401 or the error type doesn't
+    match — the caller forwards the original body unchanged in that case.
+    """
+    if status_code != 401:
+        return None
+    try:
+        parsed = json.loads(body)
+        err_type = parsed.get("error", {}).get("type", "")
+        if err_type not in ("authentication_error", "invalid_api_key"):
+            return None
+        orig_msg = parsed.get("error", {}).get("message", "")
+        wrapped: dict[str, Any] = {
+            "error": {
+                "type": "provider_key_error",
+                "message": (
+                    "The upstream provider API key configured for your role "
+                    "is invalid or was revoked. Contact an admin to check the "
+                    "provider key at /manage/roles."
+                ),
+                "upstream_error": orig_msg,
+            }
+        }
+        return json.dumps(wrapped).encode("utf-8")
+    except (json.JSONDecodeError, Exception):
+        return None

@@ -17,6 +17,7 @@ from headroom.proxy.helpers import (
     RETRYABLE_OVERLOAD_STATUSES,
     jitter_delay_ms,
     retry_after_ms,
+    wrap_upstream_auth_401,
 )
 
 if TYPE_CHECKING:
@@ -1158,6 +1159,11 @@ class StreamingMixin:
                 waste_signals=waste_signals,
             )
             self._cleanup_mid_turn_stream(session_key)
+            # Wrap upstream 401 auth errors with clear context (see
+            # `wrap_upstream_auth_401` in helpers.py for details).
+            _wrapped_error = wrap_upstream_auth_401(upstream_response.status_code, error_content)
+            if _wrapped_error is not None:
+                error_content = _wrapped_error
             return Response(
                 content=error_content,
                 status_code=upstream_response.status_code,

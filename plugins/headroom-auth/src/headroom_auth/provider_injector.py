@@ -55,7 +55,11 @@ def inject_provider_key(
     if api_key is None:
         return headers, {
             "error": "provider_key_not_configured",
-            "message": f"No API key configured for provider '{provider}' in your role.",
+            "message": (
+                f"No API key configured for provider '{provider}' in your role. "
+                "An admin can add one at /manage/roles or via: "
+                f"headroom auth set-provider-key <role> {provider}"
+            ),
         }
 
     # Build a new header list, dropping any existing Authorization.

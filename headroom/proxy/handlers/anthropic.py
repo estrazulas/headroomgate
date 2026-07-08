@@ -30,7 +30,7 @@ from headroom.proxy.auth_mode import classify_auth_mode, classify_client
 from headroom.proxy.compression_decision import CompressionDecision
 from headroom.proxy.forwarded_headers import resolve_client_ip
 from headroom.proxy.handlers._debug_dump import _debug_dump_mode, _redact_debug_value
-from headroom.proxy.helpers import extract_tags
+from headroom.proxy.helpers import extract_tags, wrap_upstream_auth_401
 from headroom.proxy.memory_decision import MemoryDecision
 from headroom.proxy.memory_query import MemoryQuery
 from headroom.proxy.outcome import RequestOutcome
@@ -2743,6 +2743,15 @@ class AnthropicHandlerMixin:
                                 f"[{request_id}] Security response scan error: {sec_err}"
                             )
 
+                    # Wrap upstream 401 auth errors so the client sees
+                    # "provider key is invalid" not "hr_ key is invalid".
+                    _wrapped_body = wrap_upstream_auth_401(response.status_code, response.content)
+                    if _wrapped_body is not None:
+                        return Response(
+                            content=_wrapped_body,
+                            status_code=response.status_code,
+                            headers=response_headers,
+                        )
                     return Response(
                         content=response.content,
                         status_code=response.status_code,
