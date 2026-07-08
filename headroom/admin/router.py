@@ -8,6 +8,7 @@ auth store and audit store.
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -342,6 +343,11 @@ async def usage_page(user: dict[str, Any] = Depends(_require_admin_or_lead)) -> 
     return _render("usage.html", **_page_context(user, title="Usage", active_nav="usage"))
 
 
+@router.get("/roles", response_class=HTMLResponse)
+async def roles_page(user: dict[str, Any] = Depends(_require_admin)) -> str:
+    return _render("roles.html", **_page_context(user, title="Roles", active_nav="roles"))
+
+
 # ── User management API ──────────────────────────────────────────────────
 
 
@@ -553,6 +559,115 @@ async def api_revoke_key(
     result = store.revoke_key(key_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Key not found")
+    return result
+
+
+# ── Role & provider key management API ────────────────────────────────────
+
+_ALLOWED_PROVIDERS = frozenset({"anthropic", "openai", "gemini"})
+
+
+@router.get("/api/roles")
+async def api_list_roles(
+    user: dict[str, Any] = Depends(_require_admin),
+) -> list[dict[str, Any]]:
+    """List all roles with provider counts (admin only)."""
+    store = _get_auth()
+    roles = store.list_roles()
+    # Enrich with provider count
+    for role in roles:
+        try:
+            keys = store.list_provider_keys(role["name"])
+            role["provider_count"] = len(keys)
+        except Exception:
+            role["provider_count"] = 0
+    return roles
+
+
+@router.get("/api/roles/{role_name}/providers")
+async def api_list_role_providers(
+    role_name: str,
+    user: dict[str, Any] = Depends(_require_admin),
+) -> dict[str, Any]:
+    """List configured providers for a role (without key values)."""
+    store = _get_auth()
+    try:
+        keys = store.list_provider_keys(role_name)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"role": role_name, "providers": keys}
+
+
+@router.post("/api/roles/{role_name}/providers/{provider}")
+async def api_set_role_provider_key(
+    role_name: str,
+    provider: str,
+    request: Request,
+    user: dict[str, Any] = Depends(_require_admin),
+) -> dict[str, Any]:
+    """Set a provider key for a role (admin only, encrypts with Fernet)."""
+    # Protect admin role
+    if role_name == "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="The admin role is protected. Use the CLI to manage its provider keys.",
+        )
+
+    # Validate provider name
+    if provider.lower() not in _ALLOWED_PROVIDERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown provider '{provider}'. Allowed: {', '.join(sorted(_ALLOWED_PROVIDERS))}",
+        )
+
+    # Check encryption key availability
+    if not os.environ.get("HEADROOM_ENCRYPTION_KEY"):
+        raise HTTPException(
+            status_code=400,
+            detail="HEADROOM_ENCRYPTION_KEY is not set. Generate one with: headroom auth generate-key",
+        )
+
+    body = await request.json()
+    key_value = body.get("key", "").strip()
+    if not key_value:
+        raise HTTPException(status_code=400, detail="Provider key is required")
+
+    store = _get_auth()
+    try:
+        store.set_provider_key(role_name, provider.lower(), key_value)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return {"role": role_name, "provider": provider.lower(), "configured": True}
+
+
+@router.delete("/api/roles/{role_name}/providers/{provider}")
+async def api_remove_role_provider_key(
+    role_name: str,
+    provider: str,
+    user: dict[str, Any] = Depends(_require_admin),
+) -> dict[str, Any]:
+    """Remove a provider key from a role (admin only)."""
+    # Protect admin role
+    if role_name == "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="The admin role is protected. Use the CLI to manage its provider keys.",
+        )
+
+    # Validate provider name
+    if provider.lower() not in _ALLOWED_PROVIDERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown provider '{provider}'. Allowed: {', '.join(sorted(_ALLOWED_PROVIDERS))}",
+        )
+
+    store = _get_auth()
+    try:
+        result = store.remove_provider_key(role_name, provider.lower())
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
     return result
 
 

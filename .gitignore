@@ -238,7 +238,6 @@ pyrightconfig.json
 .\#*
 
 # Local development configuration
-CLAUDE.md
 AGENTS.md
 
 # Vitals provenance data
@@ -272,3 +271,4 @@ dummy/
 .github/skills/openspec-*/
 .github/prompts/opsx-*
 openspec/
+.playwright-mcp/

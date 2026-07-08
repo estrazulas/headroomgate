@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block content %}
+<div x-data="rolesApp()" x-init="init()" class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold">All Roles</h3>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <template x-for="r in roles" :key="r.name">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold text-lg" x-text="r.name"></h4>
+                    <template x-if="r.name === 'admin'">
+                        <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700">Protected</span>
+                    </template>
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-3" x-text="r.description || 'No description'"></p>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-400 dark:text-gray-500" x-text="r.provider_count ? `${r.provider_count} provider${r.provider_count !== 1 ? 's' : ''}` : 'No providers'"></span>
+                    <button x-show="r.name !== 'admin'"
+                            @click="openProviderModal(r)"
+                            class="text-sm text-indigo-500 hover:text-indigo-400 font-medium inline-flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        Keys
+                    </button>
+                </div>
+            </div>
+        </template>
+        <template x-if="roles.length === 0">
+            <div class="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
+                <p class="text-lg font-medium mb-1">No roles available</p>
+                <p class="text-sm">Roles are created during setup.</p>
+            </div>
+        </template>
+    </div>
+
+    <!-- Provider key management modal -->
+    <div x-show="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" x-cloak @click.away="closeProviderModal()">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md mx-4 border border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">
+                    Provider Keys: <span x-text="selectedRole?.name"></span>
+                </h3>
+                <button @click="closeProviderModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Configured providers list -->
+            <div class="space-y-2 mb-6">
+                <template x-for="(status, provider) in providers" :key="provider">
+                    <div class="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-750 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full" :class="status ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'"></span>
+                            <span class="text-sm font-medium capitalize" x-text="provider"></span>
+                            <span x-show="status" class="text-xs text-green-600 dark:text-green-400">configured</span>
+                            <span x-show="!status" class="text-xs text-gray-400">not configured</span>
+                        </div>
+                        <button x-show="status"
+                                @click="confirmRemove(provider)"
+                                class="text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors"
+                                :title="`Remove ${provider} key`">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Add Key form -->
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <h4 class="text-sm font-medium mb-3" x-show="!addKeyForm.show">Add Key</h4>
+                <button x-show="!addKeyForm.show"
+                        @click="addKeyForm.show = true"
+                        class="text-sm text-indigo-500 hover:text-indigo-400 font-medium">+ Add Key</button>
+                <form x-show="addKeyForm.show"
+                      @submit.prevent="setProviderKey()"
+                      class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium mb-1">Provider</label>
+                        <select x-model="addKeyForm.provider" required
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                            <option value="">Select provider...</option>
+                            <template x-for="p in unconfiguredProviders()" :key="p">
+                                <option :value="p" x-text="p.charAt(0).toUpperCase() + p.slice(1)"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium mb-1">API Key</label>
+                        <input type="password" x-model="addKeyForm.key" required placeholder="Enter API key"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" @click="addKeyForm = { show: false, provider: '', key: '' }"
+                                class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancel</button>
+                        <button type="submit"
+                                class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remove confirmation dialog -->
+    <div x-show="showRemoveConfirm" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" x-cloak>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-sm mx-4 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold mb-2">Remove Provider Key</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Remove <span class="font-medium capitalize" x-text="removeTarget?.provider"></span> key from <span class="font-medium" x-text="selectedRole?.name"></span>? This cannot be undone.
+            </p>
+            <div class="flex justify-end gap-3">
+                <button @click="showRemoveConfirm = false"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancel</button>
+                <button @click="removeProviderKey()"
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">Remove</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error toast -->
+    <div x-show="error" @click="error = ''"
+         class="fixed bottom-6 right-6 z-[70] max-w-sm bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg p-4 cursor-pointer"
+         x-cloak>
+        <p class="text-sm text-red-700 dark:text-red-300" x-text="error"></p>
+    </div>
+</div>
+
+<script>
+    function rolesApp() {
+        return {
+            roles: [],
+            showModal: false,
+            showRemoveConfirm: false,
+            selectedRole: null,
+            providers: {},
+            addKeyForm: { show: false, provider: '', key: '' },
+            removeTarget: null,
+            error: '',
+            async init() {
+                await this.loadRoles();
+            },
+            async loadRoles() {
+                try {
+                    const resp = await fetch('/manage/api/roles');
+                    if (!resp.ok) throw new Error((await resp.json()).detail || 'Failed to load roles');
+                    this.roles = await resp.json();
+                } catch(e) {
+                    this.error = e.message || 'Failed to load roles';
+                }
+            },
+            async openProviderModal(role) {
+                this.selectedRole = role;
+                this.addKeyForm = { show: false, provider: '', key: '' };
+                this.removeTarget = null;
+                this.showModal = true;
+                await this.loadProviders();
+            },
+            closeProviderModal() {
+                this.showModal = false;
+                this.selectedRole = null;
+                this.providers = {};
+                this.addKeyForm = { show: false, provider: '', key: '' };
+            },
+            async loadProviders() {
+                if (!this.selectedRole) return;
+                try {
+                    const resp = await fetch(`/manage/api/roles/${this.selectedRole.name}/providers`);
+                    if (!resp.ok) throw new Error((await resp.json()).detail || 'Failed to load providers');
+                    const data = await resp.json();
+                    // Build status map for all allowed providers
+                    const configuredList = data.providers || [];
+                    this.providers = { anthropic: false, openai: false, gemini: false };
+                    configuredList.forEach(item => {
+                        const name = typeof item === 'string' ? item : item.provider;
+                        this.providers[name] = true;
+                    });
+                } catch(e) {
+                    this.error = e.message || 'Failed to load providers';
+                }
+            },
+            unconfiguredProviders() {
+                return Object.keys(this.providers).filter(p => !this.providers[p]);
+            },
+            async setProviderKey() {
+                if (!this.selectedRole) return;
+                try {
+                    const resp = await fetch(
+                        `/manage/api/roles/${this.selectedRole.name}/providers/${this.addKeyForm.provider}`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ key: this.addKeyForm.key })
+                        }
+                    );
+                    if (!resp.ok) throw new Error((await resp.json()).detail || 'Failed to set provider key');
+                    this.addKeyForm = { show: false, provider: '', key: '' };
+                    await this.loadProviders();
+                    await this.loadRoles();
+                } catch(e) {
+                    this.error = e.message || 'Failed to set provider key';
+                }
+            },
+            confirmRemove(provider) {
+                this.removeTarget = { provider };
+                this.showRemoveConfirm = true;
+            },
+            async removeProviderKey() {
+                if (!this.selectedRole || !this.removeTarget) return;
+                try {
+                    const resp = await fetch(
+                        `/manage/api/roles/${this.selectedRole.name}/providers/${this.removeTarget.provider}`,
+                        { method: 'DELETE' }
+                    );
+                    if (!resp.ok) throw new Error((await resp.json()).detail || 'Failed to remove provider key');
+                    this.showRemoveConfirm = false;
+                    this.removeTarget = null;
+                    await this.loadProviders();
+                    await this.loadRoles();
+                } catch(e) {
+                    this.showRemoveConfirm = false;
+                    this.error = e.message || 'Failed to remove provider key';
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

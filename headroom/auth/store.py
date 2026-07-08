@@ -555,6 +555,42 @@ class Neo4jAuthStore:
         )
         return role
 
+    def remove_provider_key(self, role_name: str, provider: str) -> dict[str, Any]:
+        """Remove a provider key entry from a role's ``provider_keys`` JSON dict.
+
+        Raises ``AuthStoreError`` if the role does not exist.
+        If the provider entry does not exist, the operation is a no-op.
+        """
+        records = self._run(
+            "MATCH (r:Role {name: $name}) RETURN r.provider_keys AS provider_keys",
+            {"name": role_name},
+        )
+        if not records:
+            raise AuthStoreError(
+                f"Role '{role_name}' does not exist. Use 'list-roles' to see available roles."
+            )
+
+        raw = records[0].get("provider_keys") or "{}"
+        try:
+            import json
+
+            keys: dict[str, str] = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            keys = {}
+
+        if provider not in keys:
+            return {"role": role_name, "provider": provider, "removed": False}
+
+        del keys[provider]
+        self._run(
+            "MATCH (r:Role {name: $name}) SET r.provider_keys = $provider_keys",
+            {
+                "name": role_name,
+                "provider_keys": json.dumps(keys),
+            },
+        )
+        return {"role": role_name, "provider": provider, "removed": True}
+
     def list_roles(self) -> list[dict[str, str]]:
         """List all roles."""
         return self._run(
