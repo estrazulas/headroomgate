@@ -42,6 +42,14 @@ for setup and execution details.
 
 The `rebuild.sh` script bundles these quality checks before building and also runs `ruff check`, `ruff format --check`, and `mypy`.
 
+**After rebuild**, update the `deepclaude_with_headroom` repo to reflect any install/tag changes:
+```bash
+# After rebuild.sh completes, sync the deploy repo
+cd ~/git/deepclaude_with_headroom
+# Update version tag and install instructions in README.md if the
+# headroom version or install steps changed.
+```
+
 ## Running locally
 
 ```bash
