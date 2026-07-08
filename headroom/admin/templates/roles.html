@@ -3,6 +3,81 @@
 <div x-data="rolesApp()" x-init="init()" class="space-y-6">
     <div class="flex items-center justify-between">
         <h3 class="text-lg font-semibold">All Roles</h3>
+        <button @click="validateKeys()"
+                :disabled="validating"
+                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center gap-2">
+            <!-- Check shield icon (idle) -->
+            <svg x-show="!validating" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            <!-- Spinner (loading) -->
+            <svg x-show="validating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <span x-text="validating ? 'Validating...' : 'Validate Keys'"></span>
+        </button>
+    </div>
+
+    <!-- Validation Results Modal -->
+    <div x-show="showValidationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" x-cloak @click.away="showValidationModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-lg mx-4 border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col">
+            <!-- Modal header -->
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Provider Key Validation</h3>
+                <button @click="showValidationModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Summary bar -->
+            <div x-show="validationSummary" class="flex gap-4 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700 text-sm">
+                <span class="text-green-600 dark:text-green-400">&#9989; <span x-text="validationSummary.valid"></span> valid</span>
+                <span class="text-red-600 dark:text-red-400">&#10060; <span x-text="validationSummary.invalid"></span> invalid</span>
+                <span class="text-amber-600 dark:text-amber-400">&#9888;&#65039; <span x-text="validationSummary.error"></span> errors</span>
+            </div>
+
+            <!-- Scrollable log output -->
+            <div class="flex-1 overflow-y-auto font-mono text-xs leading-relaxed bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700" style="max-height: 50vh;">
+                <!-- Loading indicator -->
+                <div x-show="validating" class="text-gray-500 dark:text-gray-400">
+                    <p>Testing provider keys...</p>
+                    <p class="mt-1 animate-pulse">Please wait...</p>
+                </div>
+
+                <!-- Results grouped by role -->
+                <template x-if="!validating && validationResults">
+                    <div>
+                        <template x-for="(group, roleName) in groupedResults()" :key="roleName">
+                            <div class="mb-3">
+                                <!-- Role heading -->
+                                <div class="font-bold text-sm mb-1 text-gray-900 dark:text-gray-100" x-text="'── ' + roleName + ' ──'"></div>
+                                <!-- Provider lines -->
+                                <template x-for="r in group" :key="r.provider">
+                                    <div class="ml-2">
+                                        <span x-show="r.status === 'valid'" class="text-green-600 dark:text-green-400">&#9989; </span>
+                                        <span x-show="r.status === 'invalid'" class="text-red-600 dark:text-red-400">&#10060; </span>
+                                        <span x-show="r.status === 'error'" class="text-amber-600 dark:text-amber-400">&#9888;&#65039; </span>
+                                        <span x-text="r.provider + ': ' + r.detail" class="text-gray-800 dark:text-gray-200"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- Empty state -->
+                        <div x-show="validationResults.length === 0" class="text-gray-500 dark:text-gray-400">
+                            No provider keys configured.
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex justify-end mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <button @click="showValidationModal = false"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Close</button>
+            </div>
+        </div>
     </div>
 
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -136,6 +211,10 @@
             addKeyForm: { show: false, provider: '', key: '' },
             removeTarget: null,
             error: '',
+            validating: false,
+            showValidationModal: false,
+            validationResults: null,
+            validationSummary: null,
             async init() {
                 await this.loadRoles();
             },
@@ -219,6 +298,37 @@
                 } catch(e) {
                     this.showRemoveConfirm = false;
                     this.error = e.message || 'Failed to remove provider key';
+                }
+            },
+            groupedResults() {
+                if (!this.validationResults) return {};
+                const groups = {};
+                this.validationResults.forEach(r => {
+                    if (!groups[r.role]) groups[r.role] = [];
+                    groups[r.role].push(r);
+                });
+                return groups;
+            },
+
+            async validateKeys() {
+                this.validating = true;
+                this.showValidationModal = true;
+                this.validationResults = null;
+                this.validationSummary = null;
+                this.error = '';
+                try {
+                    const resp = await fetch('/manage/api/validate-provider-keys', { method: 'POST' });
+                    if (!resp.ok) {
+                        const detail = (await resp.json()).detail || 'Validation failed';
+                        throw new Error(detail);
+                    }
+                    const data = await resp.json();
+                    this.validationResults = data.results;
+                    this.validationSummary = data.summary;
+                } catch(e) {
+                    this.error = e.message || 'Validation failed';
+                } finally {
+                    this.validating = false;
                 }
             }
         }

@@ -7,12 +7,14 @@ auth store and audit store.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
@@ -669,6 +671,217 @@ async def api_remove_role_provider_key(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     return result
+
+
+# ── Provider key validation ──────────────────────────────────────────────
+
+# Default upstream URLs — overridden via _ANTHROPIC_TARGET_API_URL etc.
+_DEFAULT_ANTHROPIC_API = "https://api.anthropic.com"
+_DEFAULT_OPENAI_API = "https://api.openai.com"
+_DEFAULT_GEMINI_API = "https://generativelanguage.googleapis.com"
+
+
+def _get_provider_test_config(
+    provider: str,
+) -> tuple[str, str, dict[str, str]] | None:
+    """Return (method, url, headers_template) for testing a provider key.
+
+    Uses the proxy's configured upstream URLs (env vars) so validation
+    tests against the same endpoint the proxy actually routes to.
+    """
+    # Resolve the upstream base URL the same way the proxy does
+    if provider == "anthropic":
+        base_url = os.environ.get(
+            "ANTHROPIC_TARGET_API_URL",
+            _anthropic_api_url or _DEFAULT_ANTHROPIC_API,
+        )
+        return (
+            "GET",
+            f"{base_url.rstrip('/')}/v1/messages?limit=1",
+            {"x-api-key": "{key}", "anthropic-version": "2023-06-01"},
+        )
+    elif provider == "openai":
+        base_url = os.environ.get("OPENAI_TARGET_API_URL", _DEFAULT_OPENAI_API)
+        return (
+            "GET",
+            f"{base_url.rstrip('/')}/v1/models?limit=1",
+            {"Authorization": "Bearer {key}"},
+        )
+    elif provider == "gemini":
+        base_url = os.environ.get("GEMINI_TARGET_API_URL", _DEFAULT_GEMINI_API)
+        return (
+            "GET",
+            f"{base_url.rstrip('/')}/v1beta/models?limit=1",
+            {"x-goog-api-key": "{key}"},
+        )
+    return None
+
+
+async def _validate_one_provider_key(
+    role: str,
+    provider: str,
+    api_key: str,
+    timeout: float = 10.0,
+) -> dict[str, str]:
+    """Make an async test request to verify a provider key is valid.
+
+    Returns a result dict with ``role``, ``provider``, ``status``, and ``detail``.
+    Never raises — all failures are captured in the result.
+    """
+    info = _get_provider_test_config(provider)
+    if info is None:
+        return {
+            "role": role,
+            "provider": provider,
+            "status": "error",
+            "detail": f"Unknown provider: {provider}",
+        }
+
+    method, url, headers_template = info
+    headers = {k: v.replace("{key}", api_key) for k, v in headers_template.items()}
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.request(method, url, headers=headers)
+            if 200 <= resp.status_code < 300:
+                return {
+                    "role": role,
+                    "provider": provider,
+                    "status": "valid",
+                    "detail": "OK",
+                }
+            elif resp.status_code in (401, 403):
+                reason = "Unauthorized" if resp.status_code == 401 else "Forbidden"
+                return {
+                    "role": role,
+                    "provider": provider,
+                    "status": "invalid",
+                    "detail": f"{resp.status_code} {reason} — key revoked or invalid",
+                }
+            # Any other response (4xx like 405, 5xx) means auth passed —
+            # the test endpoint just doesn't support our lightweight GET.
+            return {
+                "role": role,
+                "provider": provider,
+                "status": "valid",
+                "detail": "OK",
+            }
+    except httpx.TimeoutException:
+        return {
+            "role": role,
+            "provider": provider,
+            "status": "error",
+            "detail": "Connection timeout",
+        }
+    except Exception as exc:
+        return {
+            "role": role,
+            "provider": provider,
+            "status": "error",
+            "detail": f"Connection failed: {exc}",
+        }
+
+
+@router.post("/api/validate-provider-keys")
+async def api_validate_provider_keys(
+    request: Request,
+    user: dict[str, Any] = Depends(_require_admin),
+) -> dict[str, Any]:
+    """Validate all configured provider keys across every role.
+
+    For each role with configured providers, decrypts the stored keys
+    and makes a lightweight test request to the provider's API.
+    Results are returned grouped by role with per-key status.
+
+    Requires admin session.
+    """
+    store = _get_auth()
+    try:
+        roles = store.list_roles()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    # Build validation tasks for every (role, provider, key) triple
+    tasks: list[asyncio.Task[dict[str, str]]] = []
+
+    for role in roles:
+        role_name = role["name"] if isinstance(role, dict) else role.name
+        try:
+            configured = store.list_provider_keys(role_name)
+        except Exception:
+            continue  # skip roles we can't read
+
+        for entry in configured:
+            provider = entry["provider"] if isinstance(entry, dict) else entry.provider
+            # Only validate known providers
+            if provider not in _ALLOWED_PROVIDERS:
+                continue
+
+            try:
+                api_key = store.get_provider_key(role_name, provider)
+            except Exception as exc:
+                # Decryption failed — record as error
+                async def _decrypt_error(
+                    r: str = role_name,
+                    p: str = provider,
+                    e: str = str(exc),
+                ) -> dict[str, str]:
+                    return {
+                        "role": r,
+                        "provider": p,
+                        "status": "error",
+                        "detail": f"Encryption error: cannot decrypt key — {e}",
+                    }
+
+                tasks.append(asyncio.ensure_future(_decrypt_error()))
+                continue
+
+            if api_key is None:
+                continue
+
+            tasks.append(
+                asyncio.ensure_future(_validate_one_provider_key(role_name, provider, api_key))
+            )
+
+    if not tasks:
+        return {"results": [], "summary": {"valid": 0, "invalid": 0, "error": 0}}
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Flatten results, catching any unexpected exceptions
+    flat: list[dict[str, str]] = []
+    for r in results:
+        if isinstance(r, dict):
+            flat.append(r)
+        elif isinstance(r, Exception):
+            flat.append(
+                {
+                    "role": "unknown",
+                    "provider": "unknown",
+                    "status": "error",
+                    "detail": f"Unexpected error: {r}",
+                }
+            )
+        else:
+            flat.append(
+                {
+                    "role": "unknown",
+                    "provider": "unknown",
+                    "status": "error",
+                    "detail": f"Unexpected result type: {type(r).__name__}",
+                }
+            )
+
+    # Sort by role then provider for consistent output
+    flat.sort(key=lambda x: (x["role"], x["provider"]))
+
+    summary = {
+        "valid": sum(1 for r in flat if r["status"] == "valid"),
+        "invalid": sum(1 for r in flat if r["status"] == "invalid"),
+        "error": sum(1 for r in flat if r["status"] == "error"),
+    }
+
+    return {"results": flat, "summary": summary}
 
 
 # ── Usage monitoring API ─────────────────────────────────────────────────
