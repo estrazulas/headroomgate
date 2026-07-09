@@ -41,7 +41,7 @@ Same upstream compression engine, **plus a complete team gateway** built in:
 <p align="center">
   <img src="admin-demo.gif" alt="Headroom Admin Demo" width="100%">
   <br>
-  <em>Manage who uses the proxy — via CLI (<code>headroom auth</code>, <code>headroom usage</code>) or through the web admin interface at <code>/manage</code>.</em>
+  <em>Full admin tour: login → users → teams → API keys → usage drill-down &amp; search → roles &amp; provider keys.<br>Manage your proxy via CLI (<code>headroom auth</code>, <code>headroom usage</code>) or the web admin at <code>/manage</code>.</em>
 </p>
 
 | You want to… | You get |
