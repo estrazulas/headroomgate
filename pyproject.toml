@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "headroom-ai"
-version = "0.27.2.1"
+version = "0.27.2.2"
 description = "The Context Optimization Layer for LLM Applications - Cut costs by 50-90%"
 readme = "README.md"
 license = "Apache-2.0"
@@ -54,7 +54,7 @@ dependencies = [
     # ImportError-guarded. Marking it 3.14-optional lets headroom install on Python 3.14
     # (core compression + the Anthropic proxy path never import litellm). See GH #956.
     "litellm>=1.86.2,<2.0; python_version < '3.14'",  # model registry, pricing, providers (lazy)
-    "click>=8.1.0",               # CLI framework
+    "click>=8.3.3",               # CLI framework (CVE fix: command injection in edit())
     "rich>=13.0.0",               # Rich terminal output
     "opentelemetry-api>=1.24.0",  # Safe no-op OTEL API for instrumentation
     "ast-grep-cli>=0.30.0",       # AST-aware code slicing (CodeCompressor); binary wheel
@@ -73,7 +73,7 @@ proxy = [
     "zstandard>=0.20.0",          # Decompress zstd request bodies (Codex, etc.)
     "websockets>=13.0",           # WebSocket proxy for /v1/responses (Codex gpt-5.4+)
     "onnxruntime>=1.16.0",        # Kompress ONNX INT8 text compression (no torch needed)
-    "transformers>=4.30.0,<6.0",  # Tokenizer only (for Kompress)
+    "transformers>=5.3.0,<6.0",   # Tokenizer only (for Kompress) — CVE floor: RCE fixes in 5.3.0
     "tokenizers>=0.22.0,<=0.23.0",  # transformers runtime check enforces this range
     "watchdog>=4.0.0",            # File watcher for live code graph reindexing (--code-graph)
     "sqlite-vec>=0.1.6",          # Vector index for memory (--memory). Lightweight, no torch.
@@ -95,7 +95,7 @@ code = [
 # Use [ml] for the supported ML compression dependencies.)
 ml = [
     "torch>=2.12.1",
-    "transformers>=4.30.0,<6.0",
+    "transformers>=5.3.0,<6.0",   # CVE floor: RCE fixes in 5.3.0
     # transformers >= 5.x requires huggingface-hub >= 1.5.0,<2.0; pinning
     # the floor here prevents Kompress from silently falling back to
     # "unavailable" when a sibling install (e.g. `pip install
@@ -162,7 +162,7 @@ relevance = [
 # `headroom/image/compressor.py` adapts both API shapes at runtime via
 # a try/except cascade. See issue #372 for context.
 image = [
-    "pillow>=10.0.0",
+    "pillow>=12.3.0",             # CVE fix: decompression bomb bypasses in font loaders
     "sentencepiece>=0.1.99",  # Required by SigLIP tokenizer (SiglipTokenizer)
     # Python 3.6–3.12: keep the proven ORT-bundled package directly.
     # ~15 MB ONNX models auto-downloaded on first use.
@@ -208,7 +208,7 @@ mcp = [
 # Voice filler detection
 voice = [
     "onnxruntime>=1.16.0",
-    "transformers>=4.30.0,<6.0",
+    "transformers>=5.3.0,<6.0",   # CVE floor: RCE fixes in 5.3.0
     "torch>=2.12.1",
 ]
 # Voice training (includes voice deps + training extras)
