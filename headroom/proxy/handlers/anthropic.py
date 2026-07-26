@@ -1797,23 +1797,6 @@ class AnthropicHandlerMixin:
             tools = body.get("tools")
             _original_tools = tools  # Preserve for diagnostic / future retry
 
-            # DeepSeek (and other non-Anthropic upstreams) don't recognise
-            # tool_search_tool_* variants that Claude Code sends eagerly
-            # when pointed at a custom ANTHROPIC_BASE_URL. Strip them so
-            # the upstream doesn't 400 with "unknown variant".
-            if tools and self.ANTHROPIC_API_URL != "https://api.anthropic.com":
-                _filtered = [
-                    t
-                    for t in tools
-                    if not (
-                        isinstance(t, dict)
-                        and str(t.get("type", "")).startswith("tool_search_tool_")
-                    )
-                ]
-                if len(_filtered) != len(tools):
-                    tools = _filtered
-                    body["tools"] = tools
-
             # Issue #746: when Claude Code talks to a custom ANTHROPIC_BASE_URL
             # with ENABLE_TOOL_SEARCH unset, it stops deferring tool schemas and
             # loads them all into local context. That is a client-side decision
@@ -2602,6 +2585,22 @@ class AnthropicHandlerMixin:
                 and not _headroom_beta_added
             ):
                 headers["anthropic-beta"] = _client_beta_value
+
+            # DeepSeek (and other non-Anthropic upstreams) don't recognise
+            # tool_search_tool_* variants. These are injected by Claude Code
+            # or by tool_search_deferral and must be stripped before forwarding.
+            if self.ANTHROPIC_API_URL != "https://api.anthropic.com":
+                _ts_filtered = [
+                    t
+                    for t in (body.get("tools") or [])
+                    if not (
+                        isinstance(t, dict)
+                        and str(t.get("type", "")).startswith("tool_search_tool_")
+                    )
+                ]
+                if len(_ts_filtered) != len(body.get("tools") or []):
+                    body["tools"] = _ts_filtered
+                    tools = _ts_filtered
 
             # Forward request - use Bedrock backend if configured, otherwise direct API
             if self.anthropic_backend is not None:
