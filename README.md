@@ -13,6 +13,8 @@
                    ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ 
                   The context compression gateway for AI agents
                   with user management, audit trail, and centralized API keys
+
+<!-- mcp-name: io.github.headroomlabs-ai/headroom -->
 </pre></div>
 
 <p align="center"><strong>60–95% fewer tokens · library · proxy · MCP · user management · audit trail · centralized API keys · 6 algorithms · local-first · reversible</strong></p>
@@ -261,6 +263,8 @@ Any OpenAI-compatible client works via `headroom proxy`. MCP-native: `headroom m
 - work in a sandboxed environment where local processes can't run
 
 ---
+
+MCP registry authors can use the canonical [`server.json`](server.json) in the repo root.
 
 ## How to build
 
