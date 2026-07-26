@@ -3621,7 +3621,9 @@ class AnthropicHandlerMixin:
 
                         # Wrap upstream 401 auth errors so the client sees
                         # "provider key is invalid" not "hr_ key is invalid".
-                        _wrapped_body = wrap_upstream_auth_401(response.status_code, response.content)
+                        _wrapped_body = wrap_upstream_auth_401(
+                            response.status_code, response.content
+                        )
                         if _wrapped_body is not None:
                             return Response(
                                 content=_wrapped_body,
@@ -3951,7 +3953,10 @@ class AnthropicHandlerMixin:
                     # blocks every other request for the duration; a timeout
                     # here is caught below and passes the item through.
                     result = await self._run_compression_in_executor(
-                        lambda messages=messages, model=model, context_limit=context_limit, frozen_message_count=frozen_message_count: (
+                        lambda messages=messages,
+                        model=model,
+                        context_limit=context_limit,
+                        frozen_message_count=frozen_message_count: (
                             self.anthropic_pipeline.apply(
                                 messages=messages,
                                 model=model,

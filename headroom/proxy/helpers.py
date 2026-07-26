@@ -2853,6 +2853,7 @@ def wrap_upstream_auth_401(status_code: int, body: bytes) -> bytes | None:
     except (json.JSONDecodeError, Exception):
         return None
 
+
 # ---------------------------------------------------------------------------
 # Server-side Tool Search injection (opencode / non-Claude-Code clients).
 #
